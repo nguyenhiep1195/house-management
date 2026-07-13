@@ -109,10 +109,18 @@ Next 16 has breaking changes — consult `node_modules/next/dist/docs/` before w
   - The browser never sees the JWT. Logout deletes the cookie.
 - Authenticated server-side fetches forward the cookie value as `Authorization: Bearer <token>` to NestJS.
 
-### Route protection
+### Middleware — login-state gate (route protection)
 
-- Next middleware: no `hm_token` cookie → redirect any `(admin)` route (incl. `/`) to `/login`; logged-in visits to `/login` / `/forgot-password` / `/reset-password` → redirect to `/`. Middleware only checks cookie presence — real verification happens at the API on every call.
-- `(admin)/layout.tsx` calls `GET /auth/me` server-side; on 401 (stale cookie) clears session and redirects to `/login`. Passes `user` (name, role) to the sidebar/header.
+Root-level middleware file in `apps/web` (`middleware.ts`, or `proxy.ts` if that is Next 16's convention — confirm in `node_modules/next/dist/docs/` first). Runs on every request before rendering:
+
+1. Read the `hm_token` cookie.
+2. **Not logged in** (cookie missing, or its JWT `exp` already passed when decoded without verification) → redirect to `/login` for **every** protected route: all `(admin)` routes including home `/`, `/users`, `/buildings`, `/residents`, `/maintenance`, `/settings`. Append `?next=<pathname>` so login can return the user to where they were heading.
+3. **Logged in** and visiting `/login` or `/forgot-password` → redirect to `/`.
+4. Public, always reachable: `/login`, `/forgot-password`, `/reset-password`, Next static assets (excluded via `matcher` config).
+
+Middleware checks presence + expiry only (no signature verification — `JWT_SECRET` stays backend-only). It is the UX gate; the security boundary remains the API's `JwtAuthGuard` on every call, plus:
+
+- `(admin)/layout.tsx` calls `GET /auth/me` server-side; on 401 (invalid/stale token that middleware can't detect) it deletes the cookie and redirects to `/login`. Passes `user` (name, role) to the sidebar/header.
 
 ### Role-based UI
 
