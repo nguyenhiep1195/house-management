@@ -2,8 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useActionState } from "react";
 import { ArrowLeft, Loader2, MailCheck } from "lucide-react";
 
+import {
+  forgotPassword,
+  type AuthFormState,
+} from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,22 +20,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const initialState: AuthFormState = { error: null };
+
 export function ForgotPasswordForm() {
-  const [submitting, setSubmitting] = React.useState(false);
-  const [sentTo, setSentTo] = React.useState<string | null>(null);
+  const [state, formAction, pending] = useActionState(
+    forgotPassword,
+    initialState,
+  );
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const email = String(new FormData(event.currentTarget).get("email") ?? "");
-
-    setSubmitting(true);
-    // TODO: gọi API gửi email đặt lại mật khẩu ở đây
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setSubmitting(false);
-    setSentTo(email);
-  }
-
-  if (sentTo) {
+  if (state.success) {
     return (
       <Card>
         <CardHeader className="items-center text-center">
@@ -39,15 +37,11 @@ export function ForgotPasswordForm() {
           </div>
           <CardTitle className="text-xl">Kiểm tra email của bạn</CardTitle>
           <CardDescription>
-            Chúng tôi đã gửi liên kết đặt lại mật khẩu tới{" "}
-            <span className="font-medium text-foreground">{sentTo}</span>. Vui
-            lòng kiểm tra hộp thư (kể cả mục spam).
+            Nếu email tồn tại trong hệ thống, chúng tôi đã gửi liên kết đặt lại
+            mật khẩu. Vui lòng kiểm tra hộp thư (kể cả mục spam).
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2">
-          <Button variant="outline" onClick={() => setSentTo(null)}>
-            Gửi lại với email khác
-          </Button>
           <Button variant="ghost" asChild>
             <Link href="/login">
               <ArrowLeft className="size-4" />
@@ -68,7 +62,7 @@ export function ForgotPasswordForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={onSubmit} className="grid gap-4">
+        <form action={formAction} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -80,8 +74,13 @@ export function ForgotPasswordForm() {
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting && <Loader2 className="size-4 animate-spin" />}
+          {state.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {state.error}
+            </p>
+          ) : null}
+          <Button type="submit" className="w-full" disabled={pending}>
+            {pending && <Loader2 className="size-4 animate-spin" />}
             Gửi liên kết đặt lại
           </Button>
           <Button variant="ghost" asChild>

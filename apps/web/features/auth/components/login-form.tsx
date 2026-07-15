@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useActionState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
+import { login, type AuthFormState } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,24 +18,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function LoginForm() {
-  const router = useRouter();
+const initialState: AuthFormState = { error: null };
+
+export function LoginForm({ next }: { next: string }) {
   const [showPassword, setShowPassword] = React.useState(false);
-  const [submitting, setSubmitting] = React.useState(false);
-
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") ?? "");
-
-    setSubmitting(true);
-    // TODO: gọi API đăng nhập thật ở đây
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setSubmitting(false);
-
-    toast.success(`Chào mừng trở lại, ${email}`);
-    router.push("/");
-  }
+  const [state, formAction, pending] = useActionState(login, initialState);
 
   return (
     <Card>
@@ -46,7 +33,8 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={onSubmit} className="grid gap-4">
+        <form action={formAction} className="grid gap-4">
+          <input type="hidden" name="next" value={next} />
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -74,7 +62,7 @@ export function LoginForm() {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
-                minLength={6}
+                minLength={8}
                 required
                 className="pr-10"
               />
@@ -92,14 +80,19 @@ export function LoginForm() {
               </button>
             </div>
           </div>
+          {state.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {state.error}
+            </p>
+          ) : null}
           <div className="flex items-center gap-2">
             <Checkbox id="remember" name="remember" />
             <Label htmlFor="remember" className="font-normal">
               Ghi nhớ đăng nhập
             </Label>
           </div>
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting && <Loader2 className="size-4 animate-spin" />}
+          <Button type="submit" className="w-full" disabled={pending}>
+            {pending && <Loader2 className="size-4 animate-spin" />}
             Đăng nhập
           </Button>
         </form>
