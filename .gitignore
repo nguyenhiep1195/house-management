@@ -1,0 +1,5 @@
+# Scratch directories (not part of the project source)
+.superpowers/
+
+# Agent-related scratch
+.agents/
