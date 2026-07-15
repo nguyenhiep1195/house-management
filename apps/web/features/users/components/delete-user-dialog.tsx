@@ -24,7 +24,8 @@ interface DeleteUserDialogProps {
 export function DeleteUserDialog({ user, onOpenChange }: DeleteUserDialogProps) {
   const [pending, startTransition] = React.useTransition();
 
-  function handleConfirm() {
+  function handleConfirm(e: React.MouseEvent) {
+    e.preventDefault();
     if (!user) return;
     startTransition(async () => {
       const result = await deleteUser(user.id);
@@ -32,8 +33,8 @@ export function DeleteUserDialog({ user, onOpenChange }: DeleteUserDialogProps) 
         toast.error(result.error);
       } else {
         toast.success("Đã xoá tài khoản");
+        onOpenChange(false);
       }
-      onOpenChange(false);
     });
   }
 
@@ -48,7 +49,7 @@ export function DeleteUserDialog({ user, onOpenChange }: DeleteUserDialogProps) 
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Huỷ</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>Huỷ</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={pending}
