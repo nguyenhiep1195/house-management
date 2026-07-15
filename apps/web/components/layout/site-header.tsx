@@ -37,7 +37,13 @@ export function SiteHeader({ user }: { user: { name: string; email: string } }) 
             <Button variant="ghost" size="icon" aria-label="Tài khoản">
               <Avatar className="size-7">
                 <AvatarFallback className="text-xs">
-                  {user.name.split(" ").map((w) => w[0]).slice(-2).join("").toUpperCase()}
+                  {user.name
+                    .split(" ")
+                    .filter(Boolean)
+                    .map((w) => w[0])
+                    .slice(-2)
+                    .join("")
+                    .toUpperCase() || "?"}
                 </AvatarFallback>
               </Avatar>
             </Button>
