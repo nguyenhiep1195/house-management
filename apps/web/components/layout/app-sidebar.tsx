@@ -18,8 +18,15 @@ import {
 } from "@/components/ui/sidebar";
 import { ADMIN_NAV } from "@/lib/navigation";
 
-export function AppSidebar() {
+type Role = "ADMIN" | "MANAGER";
+
+export function AppSidebar({ role }: { role: Role }) {
   const pathname = usePathname();
+
+  const visibleGroups = ADMIN_NAV.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.adminOnly || role === "ADMIN"),
+  })).filter((group) => group.items.length > 0);
 
   return (
     <Sidebar collapsible="icon">
@@ -45,7 +52,7 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {ADMIN_NAV.map((group) => (
+        {visibleGroups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>

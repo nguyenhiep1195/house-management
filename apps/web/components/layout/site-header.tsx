@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { LogOut, Settings, User } from "lucide-react";
+
+import { logout } from "@/features/auth/actions";
 
 import { ModeToggle } from "@/components/shared/mode-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -19,9 +21,8 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { findNavItem } from "@/lib/navigation";
 
-export function SiteHeader() {
+export function SiteHeader({ user }: { user: { name: string; email: string } }) {
   const pathname = usePathname();
-  const router = useRouter();
   const current = findNavItem(pathname);
 
   return (
@@ -35,16 +36,18 @@ export function SiteHeader() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Tài khoản">
               <Avatar className="size-7">
-                <AvatarFallback className="text-xs">AD</AvatarFallback>
+                <AvatarFallback className="text-xs">
+                  {user.name.split(" ").map((w) => w[0]).slice(-2).join("").toUpperCase()}
+                </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="grid gap-0.5">
-                <span className="text-sm font-medium">Quản trị viên</span>
+                <span className="text-sm font-medium">{user.name}</span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  admin@example.com
+                  {user.email}
                 </span>
               </div>
             </DropdownMenuLabel>
@@ -64,7 +67,7 @@ export function SiteHeader() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
-              onSelect={() => router.push("/login")}
+              onSelect={() => void logout()}
             >
               <LogOut />
               Đăng xuất

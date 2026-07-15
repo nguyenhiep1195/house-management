@@ -2,6 +2,7 @@ import {
   Building2,
   LayoutDashboard,
   Settings,
+  UserCog,
   Users,
   Wrench,
   type LucideIcon,
@@ -11,6 +12,8 @@ export interface NavItem {
   title: string;
   href: string;
   icon: LucideIcon;
+  /** Only rendered for ADMIN users. */
+  adminOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -29,6 +32,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { title: "Toà nhà", href: "/buildings", icon: Building2 },
       { title: "Cư dân", href: "/residents", icon: Users },
       { title: "Bảo trì", href: "/maintenance", icon: Wrench },
+      { title: "Người dùng", href: "/users", icon: UserCog, adminOnly: true },
     ],
   },
   {
