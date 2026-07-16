@@ -45,6 +45,12 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
     if (open) lastSuccess.current = state.success === true;
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- snapshot stale success on open only
 
+  // A new submission started: whatever success we saw before is stale now,
+  // so the upcoming result can fire the toast+close effect again.
+  React.useEffect(() => {
+    if (pending) lastSuccess.current = false;
+  }, [pending]);
+
   React.useEffect(() => {
     if (state.success && !lastSuccess.current) {
       lastSuccess.current = true;
