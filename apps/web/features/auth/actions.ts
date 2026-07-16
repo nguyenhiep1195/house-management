@@ -21,7 +21,10 @@ interface LoginResponse {
 function safeNextPath(raw: FormDataEntryValue | null): string {
   const next = String(raw ?? "/");
   // only allow same-origin absolute paths — prevents open redirects
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
+  // also reject /\ prefix: browsers normalise backslash → slash, yielding //evil.com
+  return next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")
+    ? next
+    : "/";
 }
 
 export async function login(

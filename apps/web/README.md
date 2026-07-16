@@ -69,4 +69,4 @@ Phiên bản này có breaking changes so với tài liệu phổ biến — đ�
 - `params`, `searchParams` là **Promise** (phải `await`)
 - `cookies()` là async
 - `proxy.ts` thay cho `middleware.ts`
-- Auth hiện là **mock** (chưa gọi API) — các điểm cần nối backend đánh dấu `TODO` trong `features/auth`
+- Auth đã hoàn thiện — Server Actions trong `features/auth` gọi NestJS API (localhost:3001), JWT lưu trong httpOnly cookie `hm_token`, route gating qua `proxy.ts`

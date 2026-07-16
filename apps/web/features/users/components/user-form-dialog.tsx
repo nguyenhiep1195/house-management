@@ -38,6 +38,13 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
   const [state, formAction, pending] = useActionState(action, initialState);
   const lastSuccess = React.useRef(false);
 
+  // Snapshot state.success at the moment the dialog opens so that a success
+  // that happened in a *previous* session doesn't immediately fire the
+  // toast+close effect when the dialog is reopened.
+  React.useEffect(() => {
+    if (open) lastSuccess.current = state.success === true;
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- snapshot stale success on open only
+
   React.useEffect(() => {
     if (state.success && !lastSuccess.current) {
       lastSuccess.current = true;
