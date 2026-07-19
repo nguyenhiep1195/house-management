@@ -22,5 +22,25 @@ services:
       - "1025:1025"
       - "8025:8025"
 
+  api:
+    build:
+      context: ./apps/api
+    container_name: house-management-api
+    # secrets (JWT_SECRET, ...) come from the gitignored apps/api/.env;
+    # host-specific values below override it for the compose network.
+    env_file:
+      - ./apps/api/.env
+    environment:
+      DATABASE_URL: "mysql://root:root@mysql:3306/house_management"
+      PORT: "3001"
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+    ports:
+      - "3001:3001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   mysql_data:

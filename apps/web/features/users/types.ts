@@ -1,6 +1,7 @@
 export interface ManagedUser {
   id: number;
-  email: string;
+  username: string;
+  email: string | null;
   name: string;
   phone: string | null;
   role: "ADMIN" | "MANAGER";

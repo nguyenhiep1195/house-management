@@ -18,7 +18,7 @@ export default async function AdminLayout({
     <SidebarProvider>
       <AppSidebar role={user.role} />
       <SidebarInset>
-        <SiteHeader user={{ name: user.name, email: user.email }} />
+        <SiteHeader user={{ name: user.name, username: user.username }} />
         <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>

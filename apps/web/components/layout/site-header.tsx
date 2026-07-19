@@ -21,7 +21,11 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { findNavItem } from "@/lib/navigation";
 
-export function SiteHeader({ user }: { user: { name: string; email: string } }) {
+export function SiteHeader({
+  user,
+}: {
+  user: { name: string; username: string };
+}) {
   const pathname = usePathname();
   const current = findNavItem(pathname);
 
@@ -53,7 +57,7 @@ export function SiteHeader({ user }: { user: { name: string; email: string } }) 
               <div className="grid gap-0.5">
                 <span className="text-sm font-medium">{user.name}</span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  {user.email}
+                  @{user.username}
                 </span>
               </div>
             </DropdownMenuLabel>

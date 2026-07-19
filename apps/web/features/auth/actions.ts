@@ -15,7 +15,13 @@ export interface AuthFormState {
 
 interface LoginResponse {
   accessToken: string;
-  user: { id: number; email: string; name: string; role: string };
+  user: {
+    id: number;
+    username: string;
+    email: string | null;
+    name: string;
+    role: string;
+  };
 }
 
 function safeNextPath(raw: FormDataEntryValue | null): string {
@@ -34,7 +40,7 @@ export async function login(
   const res = await apiFetch<LoginResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify({
-      email: String(formData.get("email") ?? ""),
+      username: String(formData.get("username") ?? ""),
       password: String(formData.get("password") ?? ""),
     }),
   });

@@ -5,7 +5,8 @@ import { SESSION_COOKIE } from "@/lib/auth-constants";
 
 export interface SessionUser {
   id: number;
-  email: string;
+  username: string;
+  email: string | null;
   name: string;
   phone: string | null;
   role: "ADMIN" | "MANAGER";

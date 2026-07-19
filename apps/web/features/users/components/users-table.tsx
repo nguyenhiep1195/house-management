@@ -72,6 +72,7 @@ export function UsersTable({ users }: { users: ManagedUser[] }) {
             <TableHeader>
               <TableRow>
                 <TableHead>Họ tên</TableHead>
+                <TableHead>Tên đăng nhập</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Số điện thoại</TableHead>
                 <TableHead>Trạng thái</TableHead>
@@ -83,7 +84,8 @@ export function UsersTable({ users }: { users: ManagedUser[] }) {
               {users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.username}</TableCell>
+                  <TableCell>{user.email ?? "—"}</TableCell>
                   <TableCell>{user.phone ?? "—"}</TableCell>
                   <TableCell>
                     {user.isActive ? (

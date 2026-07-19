@@ -87,15 +87,31 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="user-email">
-              Email <span className="text-destructive">*</span>
+            <Label htmlFor="user-username">
+              Tên đăng nhập <span className="text-destructive">*</span>
             </Label>
+            <Input
+              id="user-username"
+              name="username"
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              minLength={3}
+              maxLength={30}
+              pattern="[a-zA-Z0-9_]+"
+              title="Chỉ gồm chữ, số và dấu gạch dưới"
+              defaultValue={user?.username}
+              required
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="user-email">Email</Label>
             <Input
               id="user-email"
               name="email"
               type="email"
-              defaultValue={user?.email}
-              required
+              defaultValue={user?.email ?? ""}
             />
           </div>
           <div className="grid gap-2">

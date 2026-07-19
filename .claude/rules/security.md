@@ -39,8 +39,9 @@ not suggestions — code that violates them must not be merged.
   input into `$queryRaw`/`$executeRaw` strings.
 - Auth endpoints are rate-limited (`@Throttle`, 5/min). Keep brute-forceable
   endpoints (login, forgot/reset password) throttled.
-- Auth failures return generic messages ("Email hoặc mật khẩu không đúng");
-  forgot-password always returns 200. Never reveal whether an email exists.
+- Auth failures return generic messages ("Tên đăng nhập hoặc mật khẩu không
+  đúng"); forgot-password always returns 200. Never reveal whether a username
+  or email exists.
 - On password change/reset or deactivation, bump `tokenVersion` so existing
   JWTs die immediately.
 

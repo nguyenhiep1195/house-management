@@ -29,20 +29,23 @@ export function LoginForm({ next }: { next: string }) {
       <CardHeader className="text-center">
         <CardTitle className="text-xl">Đăng nhập</CardTitle>
         <CardDescription>
-          Nhập email và mật khẩu để truy cập trang quản trị
+          Nhập tên đăng nhập và mật khẩu để truy cập trang quản trị
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="grid gap-4">
           <input type="hidden" name="next" value={next} />
           <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="username">Tên đăng nhập</Label>
             <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="ban@example.com"
-              autoComplete="email"
+              id="username"
+              name="username"
+              type="text"
+              placeholder="admin"
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
             />
           </div>
@@ -62,7 +65,6 @@ export function LoginForm({ next }: { next: string }) {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
-                minLength={8}
                 required
                 className="pr-10"
               />

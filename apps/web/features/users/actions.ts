@@ -25,12 +25,14 @@ export async function createUser(
   formData: FormData,
 ): Promise<UserFormState> {
   const phone = String(formData.get("phone") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
   const res = await authedFetch<ManagedUser>("/users", {
     method: "POST",
     body: JSON.stringify({
-      email: String(formData.get("email") ?? ""),
+      username: String(formData.get("username") ?? ""),
       password: String(formData.get("password") ?? ""),
       name: String(formData.get("name") ?? ""),
+      ...(email ? { email } : {}),
       ...(phone ? { phone } : {}),
     }),
   });
@@ -46,12 +48,15 @@ export async function updateUser(
   const id = Number(formData.get("id"));
   const password = String(formData.get("password") ?? "");
   const phone = String(formData.get("phone") ?? "").trim();
+  const username = String(formData.get("username") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
   const res = await authedFetch<ManagedUser>(`/users/${id}`, {
     method: "PATCH",
     body: JSON.stringify({
-      email: String(formData.get("email") ?? ""),
       name: String(formData.get("name") ?? ""),
       phone: phone || undefined,
+      ...(username ? { username } : {}),
+      ...(email ? { email } : {}),
       ...(password ? { password } : {}),
     }),
   });
