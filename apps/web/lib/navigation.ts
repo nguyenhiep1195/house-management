@@ -1,10 +1,11 @@
 import {
-  Building2,
+  DoorOpen,
+  FileText,
   LayoutDashboard,
+  Receipt,
   Settings,
   UserCog,
   Users,
-  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,11 +28,17 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [{ title: "Trang chủ", href: "/", icon: LayoutDashboard }],
   },
   {
+    label: "Vận hành",
+    items: [
+      { title: "Phòng trọ", href: "/rooms", icon: DoorOpen },
+      { title: "Người thuê", href: "/tenants", icon: Users },
+      { title: "Hợp đồng", href: "/contracts", icon: FileText },
+      { title: "Hoá đơn", href: "/invoices", icon: Receipt },
+    ],
+  },
+  {
     label: "Quản lý",
     items: [
-      { title: "Toà nhà", href: "/buildings", icon: Building2 },
-      { title: "Cư dân", href: "/residents", icon: Users },
-      { title: "Bảo trì", href: "/maintenance", icon: Wrench },
       { title: "Người dùng", href: "/users", icon: UserCog, adminOnly: true },
     ],
   },
