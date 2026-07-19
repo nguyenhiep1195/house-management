@@ -1,3 +1,6 @@
+import type { Invoice } from "@/features/invoices/types";
+import type { Tenant } from "@/features/tenants/types";
+
 export type RoomStatus = "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
 
 export const ROOM_STATUS_LABEL: Record<
@@ -29,4 +32,20 @@ export interface MeterReadingItem {
   roomId: number;
   electricityReading: number;
   waterReading: number;
+}
+
+export interface RoomContract {
+  id: number;
+  price: number;
+  deposit: number;
+  startDate: string;
+  endDate: string;
+  status: "ACTIVE" | "EXPIRED" | "TERMINATED";
+  note: string | null;
+}
+
+export interface RoomDetail extends Room {
+  tenants: Tenant[];
+  contracts: RoomContract[];
+  invoices: Invoice[];
 }
