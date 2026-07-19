@@ -63,6 +63,9 @@ export function ContractFormDialog({
   const [status, setStatus] = React.useState<ContractStatus>(
     contract?.status ?? "ACTIVE",
   );
+  const [startDate, setStartDate] = React.useState<string>(
+    contract?.startDate?.slice(0, 10) ?? "",
+  );
   const lastSuccess = React.useRef(false);
 
   React.useEffect(() => {
@@ -166,7 +169,8 @@ export function ContractFormDialog({
                 id="contract-startDate"
                 name="startDate"
                 type="date"
-                defaultValue={contract?.startDate?.slice(0, 10)}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
                 required
               />
             </div>
@@ -179,6 +183,7 @@ export function ContractFormDialog({
                 name="endDate"
                 type="date"
                 defaultValue={contract?.endDate?.slice(0, 10)}
+                min={startDate}
                 required
               />
             </div>
