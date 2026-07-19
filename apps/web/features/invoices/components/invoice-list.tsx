@@ -9,7 +9,7 @@ import {
   PAYMENT_METHOD_LABEL,
   type Invoice,
 } from "@/features/invoices/types";
-import { formatCurrency, formatMonth } from "@/lib/format";
+import { formatCurrency, formatDate, formatMonth } from "@/lib/format";
 import { PayInvoiceDialog } from "./pay-invoice-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -128,12 +128,19 @@ export function InvoiceList({
                   </TableCell>
                   <TableCell>
                     {invoice.status === "PAID" ? (
-                      <Badge variant="outline">
-                        Đã thanh toán
-                        {invoice.paymentMethod
-                          ? ` · ${PAYMENT_METHOD_LABEL[invoice.paymentMethod]}`
-                          : ""}
-                      </Badge>
+                      <div className="flex flex-col gap-0.5">
+                        <Badge variant="outline">
+                          Đã thanh toán
+                          {invoice.paymentMethod
+                            ? ` · ${PAYMENT_METHOD_LABEL[invoice.paymentMethod]}`
+                            : ""}
+                        </Badge>
+                        {invoice.paidAt ? (
+                          <span className="text-xs text-muted-foreground">
+                            Thanh toán ngày {formatDate(invoice.paidAt)}
+                          </span>
+                        ) : null}
+                      </div>
                     ) : (
                       <Badge variant="destructive">Chưa thanh toán</Badge>
                     )}
