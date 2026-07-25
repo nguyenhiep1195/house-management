@@ -55,6 +55,21 @@ export class InvoicesService {
     });
     if (existing) throw new ConflictException(INVOICE_EXISTS);
 
+    const reading = await this.prisma.meterReading.findUnique({
+      where: {
+        roomId_year_month: {
+          roomId: dto.roomId,
+          year: dto.year,
+          month: dto.month,
+        },
+      },
+    });
+    if (!reading) {
+      throw new BadRequestException(
+        `Phòng ${room.name} chưa nhập chỉ số điện nước tháng ${dto.month}/${dto.year}`,
+      );
+    }
+
     const setting = await this.settingsService.get();
 
     // previous billing period: latest invoice strictly before (year, month)
@@ -72,8 +87,8 @@ export class InvoicesService {
     const electricityPrev =
       previous?.electricityCurrent ?? room.initialElectricityReading;
     const waterPrev = previous?.waterCurrent ?? room.initialWaterReading;
-    const electricityCurrent = room.electricityReading;
-    const waterCurrent = room.waterReading;
+    const electricityCurrent = reading.electricityReading;
+    const waterCurrent = reading.waterReading;
 
     const electricityAmount =
       (electricityCurrent - electricityPrev) * setting.electricityUnitPrice;
@@ -135,12 +150,17 @@ export class InvoicesService {
   async generateForMonth(
     month: number,
     year: number,
-  ): Promise<{ created: number; skipped: number }> {
+  ): Promise<{
+    created: number;
+    skipped: number;
+    missingReadings: { roomId: number; roomName: string }[];
+  }> {
     const rooms = await this.prisma.room.findMany({
       where: { status: 'OCCUPIED' },
     });
     let created = 0;
     let skipped = 0;
+    const missingReadings: { roomId: number; roomName: string }[] = [];
     for (const room of rooms) {
       try {
         await this.create({ roomId: room.id, month, year });
@@ -150,10 +170,14 @@ export class InvoicesService {
           skipped += 1;
           continue;
         }
+        if (e instanceof BadRequestException) {
+          missingReadings.push({ roomId: room.id, roomName: room.name });
+          continue;
+        }
         throw e;
       }
     }
-    return { created, skipped };
+    return { created, skipped, missingReadings };
   }
 
   async pay(id: number, dto: PayInvoiceDto) {
