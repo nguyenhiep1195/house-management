@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
   BadRequestException,
   ConflictException,
@@ -20,7 +22,11 @@ describe('RoomsService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
-    meterReading: { findMany: jest.fn(), findFirst: jest.fn(), upsert: jest.fn() },
+    meterReading: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      upsert: jest.fn(),
+    },
     meterReadingHistory: { create: jest.fn(), findMany: jest.fn() },
     invoice: { findUnique: jest.fn() },
     $transaction: jest.fn(),
@@ -101,11 +107,17 @@ describe('RoomsService.bulkUpdateReadings', () => {
   let service: RoomsService;
   const prisma = {
     room: { findMany: jest.fn(), update: jest.fn() },
-    meterReading: { findMany: jest.fn(), findFirst: jest.fn(), upsert: jest.fn() },
+    meterReading: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      upsert: jest.fn(),
+    },
     meterReadingHistory: { create: jest.fn() },
     invoice: { findUnique: jest.fn() },
     $transaction: jest.fn((ops: unknown) =>
-      Array.isArray(ops) ? Promise.all(ops as Promise<unknown>[]) : (ops as any)(prisma),
+      Array.isArray(ops)
+        ? Promise.all(ops as Promise<unknown>[])
+        : (ops as any)(prisma),
     ),
   };
   const invoices = { syncMeterReading: jest.fn() };
