@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { DoorOpen, Gauge, MoreHorizontal, Plus } from "lucide-react";
+import { DoorOpen, Eye, Gauge, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { ROOM_STATUS_LABEL, type Room } from "@/features/rooms/types";
 import { formatCurrency } from "@/lib/format";
@@ -11,13 +11,6 @@ import { DeleteRoomDialog } from "./delete-room-dialog";
 import { RoomFormDialog } from "./room-form-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -127,34 +120,37 @@ export function RoomsTable({ rooms }: { rooms: Room[] }) {
                       {room.waterReading}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Thao tác với ${room.name}`}
-                          >
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/rooms/${room.id}`}>Xem chi tiết</Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => setEditingRoom(room)}
-                          >
-                            Sửa
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onSelect={() => setDeletingRoom(room)}
-                          >
-                            Xoá
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Xem chi tiết ${room.name}`}
+                          title="Xem chi tiết"
+                          asChild
+                        >
+                          <Link href={`/rooms/${room.id}`}>
+                            <Eye className="size-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Sửa ${room.name}`}
+                          title="Sửa"
+                          onClick={() => setEditingRoom(room)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Xoá ${room.name}`}
+                          title="Xoá"
+                          onClick={() => setDeletingRoom(room)}
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
