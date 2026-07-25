@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   BadRequestException,
   ConflictException,
@@ -5,10 +7,8 @@ import {
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { InvoicesService } from '../invoices/invoices.service';
 import { RoomsService } from './rooms.service';
-
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 describe('RoomsService', () => {
   let service: RoomsService;
@@ -20,8 +20,12 @@ describe('RoomsService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
+    meterReading: { findMany: jest.fn(), findFirst: jest.fn(), upsert: jest.fn() },
+    meterReadingHistory: { create: jest.fn() },
+    invoice: { findUnique: jest.fn() },
     $transaction: jest.fn(),
   };
+  const invoices = { syncMeterReading: jest.fn() };
 
   const room = {
     id: 1,
@@ -42,7 +46,11 @@ describe('RoomsService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     const moduleRef = await Test.createTestingModule({
-      providers: [RoomsService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        RoomsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: InvoicesService, useValue: invoices },
+      ],
     }).compile();
     service = moduleRef.get(RoomsService);
   });
@@ -77,31 +85,95 @@ describe('RoomsService', () => {
     prisma.room.findUnique.mockResolvedValue(null);
     await expect(service.findOne(99)).rejects.toThrow(NotFoundException);
   });
+});
 
-  it('rejects bulk readings lower than the current reading', async () => {
+describe('RoomsService.bulkUpdateReadings', () => {
+  let service: RoomsService;
+  const prisma = {
+    room: { findMany: jest.fn(), update: jest.fn() },
+    meterReading: { findMany: jest.fn(), findFirst: jest.fn(), upsert: jest.fn() },
+    meterReadingHistory: { create: jest.fn() },
+    invoice: { findUnique: jest.fn() },
+    $transaction: jest.fn((ops: unknown) =>
+      Array.isArray(ops) ? Promise.all(ops as Promise<unknown>[]) : (ops as any)(prisma),
+    ),
+  };
+  const invoices = { syncMeterReading: jest.fn() };
+
+  const room = {
+    id: 1,
+    name: 'P101',
+    electricityReading: 250,
+    waterReading: 22,
+    initialElectricityReading: 100,
+    initialWaterReading: 10,
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        RoomsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: InvoicesService, useValue: invoices },
+      ],
+    }).compile();
+    service = moduleRef.get(RoomsService);
+  });
+
+  it('rejects a reading lower than the previous month', async () => {
     prisma.room.findMany.mockResolvedValue([room]);
+    // findFirst is called twice per item: first the newer-month check, then the
+    // previous-month lookup. No newer month -> latest ok; prev month reads 250.
+    prisma.meterReading.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ electricityReading: 250, waterReading: 22 });
     await expect(
       service.bulkUpdateReadings({
-        items: [{ roomId: 1, electricityReading: 50, waterReading: 20 }],
+        year: 2026,
+        month: 7,
+        items: [{ roomId: 1, electricityReading: 200, waterReading: 30 }],
       }),
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('rejects bulk update containing an unknown room', async () => {
-    prisma.room.findMany.mockResolvedValue([]);
+  it('rejects editing a month that is not the latest recorded month', async () => {
+    prisma.room.findMany.mockResolvedValue([room]);
+    // a NEWER month than the target already exists
+    prisma.meterReading.findFirst.mockResolvedValue({ year: 2026, month: 8 });
     await expect(
       service.bulkUpdateReadings({
-        items: [{ roomId: 99, electricityReading: 1, waterReading: 1 }],
+        year: 2026,
+        month: 7,
+        items: [{ roomId: 1, electricityReading: 300, waterReading: 30 }],
       }),
-    ).rejects.toThrow(NotFoundException);
+    ).rejects.toThrow(BadRequestException);
   });
 
-  it('updates all readings in one transaction', async () => {
+  it('upserts the reading, writes history, and mirrors to the room', async () => {
     prisma.room.findMany.mockResolvedValue([room]);
-    prisma.$transaction.mockResolvedValue([]);
+    prisma.meterReading.findFirst.mockResolvedValue(null); // target is the latest
+    prisma.meterReading.upsert.mockResolvedValue({});
+    prisma.meterReadingHistory.create.mockResolvedValue({});
+    prisma.room.update.mockResolvedValue({});
+
     await service.bulkUpdateReadings({
-      items: [{ roomId: 1, electricityReading: 150, waterReading: 15 }],
+      year: 2026,
+      month: 7,
+      items: [{ roomId: 1, electricityReading: 300, waterReading: 30 }],
     });
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+
+    expect(prisma.meterReading.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { roomId_year_month: { roomId: 1, year: 2026, month: 7 } },
+      }),
+    );
+    expect(prisma.meterReadingHistory.create).toHaveBeenCalled();
+    expect(prisma.room.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 1 },
+        data: { electricityReading: 300, waterReading: 30 },
+      }),
+    );
   });
 });

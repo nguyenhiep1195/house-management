@@ -189,4 +189,12 @@ export class InvoicesService {
     await this.prisma.invoice.delete({ where: { id } });
     return { message: 'Đã xoá hoá đơn' };
   }
+
+  // TODO(Task 4): flesh out to recalculate and update the invoice for the given room/month.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async syncMeterReading(
+    _roomId: number,
+    _year: number,
+    _month: number,
+  ): Promise<void> {}
 }

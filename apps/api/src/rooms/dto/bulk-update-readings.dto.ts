@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsInt,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -21,6 +22,16 @@ export class MeterReadingItemDto {
 }
 
 export class BulkUpdateReadingsDto {
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  year!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  month!: number;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })

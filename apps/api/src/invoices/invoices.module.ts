@@ -8,5 +8,6 @@ import { InvoicesService } from './invoices.service';
   imports: [SettingsModule],
   controllers: [InvoicesController],
   providers: [InvoicesService, InvoicesCron],
+  exports: [InvoicesService],
 })
 export class InvoicesModule {}

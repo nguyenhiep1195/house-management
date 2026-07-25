@@ -4,6 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AuthUser } from '../auth/types/auth-user';
+import { InvoicesService } from '../invoices/invoices.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BulkUpdateReadingsDto } from './dto/bulk-update-readings.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
@@ -14,7 +16,10 @@ const ROOM_NOT_FOUND = 'Không tìm thấy phòng';
 
 @Injectable()
 export class RoomsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly invoicesService: InvoicesService,
+  ) {}
 
   findAll() {
     return this.prisma.room.findMany({
@@ -75,6 +80,7 @@ export class RoomsService {
 
   async bulkUpdateReadings(
     dto: BulkUpdateReadingsDto,
+    user?: AuthUser,
   ): Promise<{ message: string; updated: number }> {
     const ids = dto.items.map((i) => i.roomId);
     const rooms = await this.prisma.room.findMany({
@@ -82,36 +88,105 @@ export class RoomsService {
       select: {
         id: true,
         name: true,
-        electricityReading: true,
-        waterReading: true,
+        initialElectricityReading: true,
+        initialWaterReading: true,
       },
     });
     const byId = new Map(rooms.map((r) => [r.id, r]));
 
+    // Validate every item before writing anything.
     for (const item of dto.items) {
       const room = byId.get(item.roomId);
       if (!room) throw new NotFoundException(ROOM_NOT_FOUND);
+
+      // Only the room's most recent recorded month may be edited.
+      const newer = await this.prisma.meterReading.findFirst({
+        where: {
+          roomId: item.roomId,
+          OR: [
+            { year: { gt: dto.year } },
+            { year: dto.year, month: { gt: dto.month } },
+          ],
+        },
+      });
+      if (newer) {
+        throw new BadRequestException(
+          `Chỉ được sửa chỉ số của kỳ gần nhất (phòng ${room.name})`,
+        );
+      }
+
+      // New reading must be >= the previous month's reading (or the baseline).
+      const prev = await this.prisma.meterReading.findFirst({
+        where: {
+          roomId: item.roomId,
+          OR: [
+            { year: { lt: dto.year } },
+            { year: dto.year, month: { lt: dto.month } },
+          ],
+        },
+        orderBy: [{ year: 'desc' }, { month: 'desc' }],
+      });
+      const prevElectricity =
+        prev?.electricityReading ?? room.initialElectricityReading;
+      const prevWater = prev?.waterReading ?? room.initialWaterReading;
       if (
-        item.electricityReading < room.electricityReading ||
-        item.waterReading < room.waterReading
+        item.electricityReading < prevElectricity ||
+        item.waterReading < prevWater
       ) {
         throw new BadRequestException(
-          `Chỉ số mới của phòng ${room.name} phải lớn hơn hoặc bằng chỉ số cũ`,
+          `Chỉ số mới của phòng ${room.name} phải lớn hơn hoặc bằng chỉ số kỳ trước`,
         );
       }
     }
 
-    await this.prisma.$transaction(
-      dto.items.map((item) =>
-        this.prisma.room.update({
-          where: { id: item.roomId },
-          data: {
-            electricityReading: item.electricityReading,
-            waterReading: item.waterReading,
+    // Persist: upsert reading, snapshot history, mirror newest into the room.
+    for (const item of dto.items) {
+      await this.prisma.meterReading.upsert({
+        where: {
+          roomId_year_month: {
+            roomId: item.roomId,
+            year: dto.year,
+            month: dto.month,
           },
-        }),
-      ),
-    );
+        },
+        create: {
+          roomId: item.roomId,
+          year: dto.year,
+          month: dto.month,
+          electricityReading: item.electricityReading,
+          waterReading: item.waterReading,
+        },
+        update: {
+          electricityReading: item.electricityReading,
+          waterReading: item.waterReading,
+        },
+      });
+      await this.prisma.meterReadingHistory.create({
+        data: {
+          roomId: item.roomId,
+          year: dto.year,
+          month: dto.month,
+          electricityReading: item.electricityReading,
+          waterReading: item.waterReading,
+          changedById: user?.id ?? null,
+          changedByName: user?.name ?? null,
+        },
+      });
+      await this.prisma.room.update({
+        where: { id: item.roomId },
+        data: {
+          electricityReading: item.electricityReading,
+          waterReading: item.waterReading,
+        },
+      });
+      // Keep the month's invoice in sync (added in Task 4).
+      await this.invoicesService.syncMeterReading(
+        item.roomId,
+        dto.year,
+        dto.month,
+      );
+    }
+
     return { message: 'Đã cập nhật chỉ số', updated: dto.items.length };
   }
 }
