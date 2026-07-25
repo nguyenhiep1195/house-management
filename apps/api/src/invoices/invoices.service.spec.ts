@@ -22,6 +22,7 @@ describe('InvoicesService', () => {
       delete: jest.fn(),
     },
     room: { findUnique: jest.fn(), findMany: jest.fn() },
+    contract: { findFirst: jest.fn() },
     meterReading: { findUnique: jest.fn() },
   };
   const settings = { get: jest.fn() };
@@ -56,6 +57,7 @@ describe('InvoicesService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     settings.get.mockResolvedValue(setting);
+    prisma.contract.findFirst.mockResolvedValue(null);
     const moduleRef = await Test.createTestingModule({
       providers: [
         InvoicesService,
@@ -125,6 +127,86 @@ describe('InvoicesService', () => {
     const { data } = prisma.invoice.create.mock.calls[0][0];
     expect(data.electricityPrev).toBe(200);
     expect(data.waterPrev).toBe(18);
+  });
+
+  it('uses the governing contract initial readings when no invoice exists yet', async () => {
+    prisma.room.findUnique.mockResolvedValue(room);
+    prisma.invoice.findUnique.mockResolvedValue(null);
+    prisma.invoice.findFirst.mockResolvedValue(null); // no prior invoice in span
+    prisma.contract.findFirst.mockResolvedValue({
+      id: 1,
+      startDate: new Date('2026-07-01'),
+      initialElectricityReading: 500,
+      initialWaterReading: 50,
+    });
+    prisma.meterReading.findUnique.mockResolvedValue({
+      electricityReading: 560,
+      waterReading: 58,
+    });
+    prisma.invoice.create.mockImplementation(
+      ({ data }: { data: Record<string, number> }) =>
+        Promise.resolve({ id: 1, ...data }),
+    );
+
+    await service.create({ roomId: 1, month: 7, year: 2026 });
+    const { data } = prisma.invoice.create.mock.calls[0][0];
+    expect(data.electricityPrev).toBe(500);
+    expect(data.waterPrev).toBe(50);
+  });
+
+  it('scopes the previous-invoice lookup to the governing contract span', async () => {
+    prisma.room.findUnique.mockResolvedValue(room);
+    prisma.invoice.findUnique.mockResolvedValue(null);
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.contract.findFirst.mockResolvedValue({
+      id: 1,
+      startDate: new Date('2026-08-01'),
+      initialElectricityReading: 500,
+      initialWaterReading: 50,
+    });
+    prisma.meterReading.findUnique.mockResolvedValue({
+      electricityReading: 560,
+      waterReading: 58,
+    });
+    prisma.invoice.create.mockImplementation(
+      ({ data }: { data: Record<string, number> }) =>
+        Promise.resolve({ id: 1, ...data }),
+    );
+
+    await service.create({ roomId: 1, month: 8, year: 2026 });
+    const where = prisma.invoice.findFirst.mock.calls[0][0].where;
+    expect(where.AND).toEqual([
+      { OR: [{ year: { lt: 2026 } }, { year: 2026, month: { lt: 8 } }] },
+      { OR: [{ year: { gt: 2026 } }, { year: 2026, month: { gte: 8 } }] },
+    ]);
+  });
+
+  it('prefers a previous invoice over the contract initial when one exists in span', async () => {
+    prisma.room.findUnique.mockResolvedValue(room);
+    prisma.invoice.findUnique.mockResolvedValue(null);
+    prisma.contract.findFirst.mockResolvedValue({
+      id: 1,
+      startDate: new Date('2026-07-01'),
+      initialElectricityReading: 500,
+      initialWaterReading: 50,
+    });
+    prisma.invoice.findFirst.mockResolvedValue({
+      electricityCurrent: 540,
+      waterCurrent: 55,
+    });
+    prisma.meterReading.findUnique.mockResolvedValue({
+      electricityReading: 560,
+      waterReading: 58,
+    });
+    prisma.invoice.create.mockImplementation(
+      ({ data }: { data: Record<string, number> }) =>
+        Promise.resolve({ id: 1, ...data }),
+    );
+
+    await service.create({ roomId: 1, month: 8, year: 2026 });
+    const { data } = prisma.invoice.create.mock.calls[0][0];
+    expect(data.electricityPrev).toBe(540);
+    expect(data.waterPrev).toBe(55);
   });
 
   it('throws when the room has no meter reading for the month', async () => {
