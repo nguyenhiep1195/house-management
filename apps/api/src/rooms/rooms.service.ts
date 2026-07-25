@@ -13,6 +13,8 @@ import { UpdateRoomDto } from './dto/update-room.dto';
 
 const ROOM_NAME_TAKEN = 'Tên phòng đã tồn tại';
 const ROOM_NOT_FOUND = 'Không tìm thấy phòng';
+const READING_PAID_LOCKED =
+  'Hoá đơn kỳ này đã thanh toán, không thể sửa chỉ số';
 
 @Injectable()
 export class RoomsService {
@@ -143,6 +145,24 @@ export class RoomsService {
         throw new BadRequestException(
           `Chỉ số mới của phòng ${room.name} phải lớn hơn hoặc bằng chỉ số kỳ trước`,
         );
+      }
+
+      // A PAID invoice for this month must not be mutated by a reading edit.
+      // Reject up-front (before any write) so the reading store can't drift
+      // ahead of a locked invoice — syncMeterReading also guards this, but only
+      // after the reading/history/room writes would have committed.
+      const invoice = await this.prisma.invoice.findUnique({
+        where: {
+          roomId_year_month: {
+            roomId: item.roomId,
+            year: dto.year,
+            month: dto.month,
+          },
+        },
+        select: { status: true },
+      });
+      if (invoice?.status === 'PAID') {
+        throw new ConflictException(READING_PAID_LOCKED);
       }
     }
 
