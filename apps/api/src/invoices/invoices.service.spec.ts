@@ -253,7 +253,12 @@ describe('InvoicesService', () => {
     expect(prisma.room.findMany).toHaveBeenCalledWith({
       where: { status: 'OCCUPIED' },
     });
-    expect(result).toEqual({ created: 0, skipped: 1, missingReadings: [] });
+    expect(result).toEqual({
+      created: 0,
+      skipped: 1,
+      skippedRooms: [{ roomId: 1, roomName: 'P101' }],
+      missingReadings: [],
+    });
   });
 
   it('generateForMonth increments created for an OCCUPIED room with no existing invoice', async () => {
@@ -271,7 +276,12 @@ describe('InvoicesService', () => {
     );
 
     const result = await service.generateForMonth(7, 2026);
-    expect(result).toEqual({ created: 1, skipped: 0, missingReadings: [] });
+    expect(result).toEqual({
+      created: 1,
+      skipped: 0,
+      skippedRooms: [],
+      missingReadings: [],
+    });
     expect(prisma.invoice.create).toHaveBeenCalledTimes(1);
   });
 
@@ -290,7 +300,12 @@ describe('InvoicesService', () => {
     prisma.invoice.create.mockRejectedValue(p2002); // race -> P2002 -> ConflictException
 
     const result = await service.generateForMonth(7, 2026);
-    expect(result).toEqual({ created: 0, skipped: 1, missingReadings: [] });
+    expect(result).toEqual({
+      created: 0,
+      skipped: 1,
+      skippedRooms: [{ roomId: 1, roomName: 'P101' }],
+      missingReadings: [],
+    });
   });
 
   it('generateForMonth collects rooms with missing readings', async () => {
@@ -304,6 +319,7 @@ describe('InvoicesService', () => {
     expect(result).toEqual({
       created: 0,
       skipped: 0,
+      skippedRooms: [],
       missingReadings: [{ roomId: 1, roomName: 'P101' }],
     });
   });
