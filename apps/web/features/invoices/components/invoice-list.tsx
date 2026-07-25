@@ -1,7 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal, Receipt } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  Pencil,
+  Receipt,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteInvoice, unpayInvoice } from "@/features/invoices/actions";
@@ -9,17 +16,13 @@ import {
   PAYMENT_METHOD_LABEL,
   type Invoice,
 } from "@/features/invoices/types";
+import { computeFeeLines } from "@/features/invoices/lib/fee-lines";
 import { formatCurrency, formatDate, formatMonth } from "@/lib/format";
+import { InvoiceDetailDialog } from "./invoice-detail-dialog";
+import { EditInvoiceDialog } from "./edit-invoice-dialog";
 import { PayInvoiceDialog } from "./pay-invoice-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -39,21 +42,28 @@ export function InvoiceList({
   const [payingInvoice, setPayingInvoice] = React.useState<Invoice | null>(
     null,
   );
+  const [detailInvoice, setDetailInvoice] = React.useState<Invoice | null>(
+    null,
+  );
+  const [editingInvoice, setEditingInvoice] = React.useState<Invoice | null>(
+    null,
+  );
+  const [expanded, setExpanded] = React.useState<number | null>(null);
   const [, startTransition] = React.useTransition();
-
-  function handleUnpay(invoice: Invoice) {
-    startTransition(async () => {
-      const result = await unpayInvoice(invoice.id, invoice.roomId);
-      if (result.error) toast.error(result.error);
-      else toast.success("Đã chuyển về chưa thanh toán");
-    });
-  }
 
   function handleDelete(invoice: Invoice) {
     startTransition(async () => {
       const result = await deleteInvoice(invoice.id, invoice.roomId);
       if (result.error) toast.error(result.error);
       else toast.success("Đã xoá hoá đơn");
+    });
+  }
+
+  function handleUnpay(invoice: Invoice) {
+    startTransition(async () => {
+      const result = await unpayInvoice(invoice.id, invoice.roomId);
+      if (result.error) toast.error(result.error);
+      else toast.success("Đã chuyển về chưa thanh toán");
     });
   }
 
@@ -66,12 +76,15 @@ export function InvoiceList({
     );
   }
 
+  const colSpan = showRoom ? 9 : 8;
+
   return (
     <>
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-8" />
               <TableHead>Kỳ</TableHead>
               {showRoom ? <TableHead>Phòng</TableHead> : null}
               <TableHead>Tiền phòng</TableHead>
@@ -80,112 +93,156 @@ export function InvoiceList({
               <TableHead>Phí khác</TableHead>
               <TableHead>Tổng cộng</TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead className="w-32" />
+              <TableHead className="w-40" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {invoices.map((invoice) => {
-              const electricityAmount =
-                (invoice.electricityCurrent - invoice.electricityPrev) *
-                invoice.electricityUnitPrice;
-              const waterAmount =
-                (invoice.waterCurrent - invoice.waterPrev) *
-                invoice.waterUnitPrice;
-              const extraFees =
-                invoice.internetFee +
-                invoice.elevatorFee +
-                invoice.cleaningFee +
-                invoice.motorbikeFee +
-                invoice.otherFee;
+              const { electricityAmount, waterAmount, extraFees, lines } =
+                computeFeeLines(invoice);
+              const isOpen = expanded === invoice.id;
               return (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">
-                    {formatMonth(invoice.month, invoice.year)}
-                  </TableCell>
-                  {showRoom ? (
-                    <TableCell>{invoice.room?.name ?? "—"}</TableCell>
-                  ) : null}
-                  <TableCell className="tabular-nums">
-                    {formatCurrency(invoice.roomPrice)}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {formatCurrency(electricityAmount)}
-                    <span className="block text-xs text-muted-foreground">
-                      {invoice.electricityPrev} → {invoice.electricityCurrent}
-                    </span>
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {formatCurrency(waterAmount)}
-                    <span className="block text-xs text-muted-foreground">
-                      {invoice.waterPrev} → {invoice.waterCurrent}
-                    </span>
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {formatCurrency(extraFees)}
-                  </TableCell>
-                  <TableCell className="font-medium tabular-nums">
-                    {formatCurrency(invoice.totalAmount)}
-                  </TableCell>
-                  <TableCell>
-                    {invoice.status === "PAID" ? (
-                      <div className="flex flex-col gap-0.5">
+                <React.Fragment key={invoice.id}>
+                  <TableRow>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        aria-label={isOpen ? "Thu gọn" : "Xem thêm"}
+                        onClick={() =>
+                          setExpanded(isOpen ? null : invoice.id)
+                        }
+                      >
+                        {isOpen ? (
+                          <ChevronDown className="size-4" />
+                        ) : (
+                          <ChevronRight className="size-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {formatMonth(invoice.month, invoice.year)}
+                    </TableCell>
+                    {showRoom ? (
+                      <TableCell>{invoice.room?.name ?? "—"}</TableCell>
+                    ) : null}
+                    <TableCell className="tabular-nums">
+                      {formatCurrency(invoice.roomPrice)}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {formatCurrency(electricityAmount)}
+                      <span className="block text-xs text-muted-foreground">
+                        {invoice.electricityPrev} → {invoice.electricityCurrent}
+                      </span>
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {formatCurrency(waterAmount)}
+                      <span className="block text-xs text-muted-foreground">
+                        {invoice.waterPrev} → {invoice.waterCurrent}
+                      </span>
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {formatCurrency(extraFees)}
+                    </TableCell>
+                    <TableCell className="font-medium tabular-nums">
+                      {formatCurrency(invoice.totalAmount)}
+                    </TableCell>
+                    <TableCell>
+                      {invoice.status === "PAID" ? (
                         <Badge variant="outline">
                           Đã thanh toán
                           {invoice.paymentMethod
                             ? ` · ${PAYMENT_METHOD_LABEL[invoice.paymentMethod]}`
                             : ""}
                         </Badge>
-                        {invoice.paidAt ? (
-                          <span className="text-xs text-muted-foreground">
-                            Thanh toán ngày {formatDate(invoice.paidAt)}
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <Badge variant="destructive">Chưa thanh toán</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      {invoice.status === "UNPAID" ? (
-                        <Button
-                          size="sm"
-                          onClick={() => setPayingInvoice(invoice)}
-                        >
-                          Xác nhận đã thanh toán
-                        </Button>
-                      ) : null}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                      ) : (
+                        <Badge variant="destructive">Chưa thanh toán</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        {invoice.status === "UNPAID" ? (
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Thao tác với hoá đơn"
+                            size="sm"
+                            onClick={() => setPayingInvoice(invoice)}
                           >
-                            <MoreHorizontal className="size-4" />
+                            Thanh toán
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {invoice.status === "PAID" ? (
-                            <DropdownMenuItem
-                              onSelect={() => handleUnpay(invoice)}
-                            >
-                              Chuyển về chưa thanh toán
-                            </DropdownMenuItem>
-                          ) : null}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            disabled={invoice.status === "PAID"}
-                            onSelect={() => handleDelete(invoice)}
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUnpay(invoice)}
                           >
-                            Xoá hoá đơn
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                            Huỷ TT
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Xem chi tiết"
+                          title="Xem chi tiết"
+                          onClick={() => setDetailInvoice(invoice)}
+                        >
+                          <Eye className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Sửa hoá đơn"
+                          title="Sửa hoá đơn"
+                          disabled={invoice.status === "PAID"}
+                          onClick={() => setEditingInvoice(invoice)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Xoá hoá đơn"
+                          title="Xoá hoá đơn"
+                          disabled={invoice.status === "PAID"}
+                          onClick={() => handleDelete(invoice)}
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {isOpen ? (
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableCell />
+                      <TableCell colSpan={colSpan - 1}>
+                        <dl className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
+                          {lines.map((line) => (
+                            <div
+                              key={line.label}
+                              className="flex items-center justify-between gap-4 py-0.5 text-sm"
+                            >
+                              <dt className="text-muted-foreground">
+                                {line.label}
+                                {line.hint ? (
+                                  <span className="ml-1 text-xs">
+                                    ({line.hint})
+                                  </span>
+                                ) : null}
+                              </dt>
+                              <dd className="tabular-nums">
+                                {formatCurrency(line.value)}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                        {invoice.status === "PAID" && invoice.paidAt ? (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Thanh toán ngày {formatDate(invoice.paidAt)}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </React.Fragment>
               );
             })}
           </TableBody>
@@ -194,6 +251,14 @@ export function InvoiceList({
       <PayInvoiceDialog
         invoice={payingInvoice}
         onOpenChange={(open) => !open && setPayingInvoice(null)}
+      />
+      <InvoiceDetailDialog
+        invoice={detailInvoice}
+        onOpenChange={(open) => !open && setDetailInvoice(null)}
+      />
+      <EditInvoiceDialog
+        invoice={editingInvoice}
+        onOpenChange={(open) => !open && setEditingInvoice(null)}
       />
     </>
   );

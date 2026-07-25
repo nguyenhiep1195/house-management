@@ -1,0 +1,17 @@
+# Never copy host artifacts into the build context:
+# node_modules holds macOS-native binaries (bcrypt/mariadb) that break on Linux,
+# and .env holds secrets (provided at runtime via compose env_file instead).
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+
+.git
+.gitignore
+*.log
+npm-debug.log*
+
+Dockerfile
+.dockerignore

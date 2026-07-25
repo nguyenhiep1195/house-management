@@ -184,6 +184,8 @@ export function RoomsTable({ rooms }: { rooms: Room[] }) {
         open={bulkOpen}
         onOpenChange={setBulkOpen}
         rooms={rooms}
+        year={new Date().getFullYear()}
+        month={new Date().getMonth() + 1}
       />
     </>
   );

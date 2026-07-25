@@ -29,6 +29,8 @@ interface BulkReadingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   rooms: Room[];
+  year: number;
+  month: number;
 }
 
 type Draft = Record<number, { electricity: string; water: string }>;
@@ -37,6 +39,8 @@ export function BulkReadingsDialog({
   open,
   onOpenChange,
   rooms,
+  year,
+  month,
 }: BulkReadingsDialogProps) {
   const [pending, startTransition] = React.useTransition();
   const [draft, setDraft] = React.useState<Draft>({});
@@ -86,7 +90,7 @@ export function BulkReadingsDialog({
     }
 
     startTransition(async () => {
-      const result = await bulkUpdateReadings(items);
+      const result = await bulkUpdateReadings(items, year, month);
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -102,8 +106,8 @@ export function BulkReadingsDialog({
         <DialogHeader>
           <DialogTitle>Cập nhật chỉ số điện nước</DialogTitle>
           <DialogDescription>
-            Nhập chỉ số mới cho các phòng cần chốt. Phòng bỏ trống sẽ không
-            thay đổi.
+            Nhập chỉ số mới cho kỳ {month}/{year}. Phòng bỏ trống sẽ không thay
+            đổi.
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-lg border">

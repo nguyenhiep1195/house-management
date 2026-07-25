@@ -1,0 +1,220 @@
+datasource db {
+  provider = "mysql"
+}
+
+generator client {
+  provider      = "prisma-client"
+  output        = "../src/generated"
+  moduleFormat  = "cjs"
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+}
+
+model User {
+  id           Int                  @id @default(autoincrement())
+  username     String               @unique
+  email        String?              @unique
+  password     String
+  name         String
+  phone        String?
+  role         Role                 @default(MANAGER)
+  isActive     Boolean              @default(true)
+  tokenVersion Int                  @default(0)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  resetTokens  PasswordResetToken[]
+
+  @@map("users")
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@map("password_reset_tokens")
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+}
+
+enum ContractStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+}
+
+model Setting {
+  id                   Int      @id @default(autoincrement())
+  electricityUnitPrice Int      @default(3500)
+  waterUnitPrice       Int      @default(15000)
+  internetFee          Int      @default(100000)
+  elevatorFeePerPerson Int      @default(30000)
+  cleaningFeePerPerson Int      @default(20000)
+  motorbikeFeePerExtra Int      @default(100000)
+  freeMotorbikeCount   Int      @default(2)
+  otherFee             Int      @default(0)
+  updatedAt            DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// One immutable snapshot per fee-settings change, for the "Lịch sử" tab.
+// New fees apply only to invoices generated afterwards (invoices snapshot fees
+// at creation), so this is an audit trail, not a source for recalculation.
+model SettingHistory {
+  id                   Int      @id @default(autoincrement())
+  electricityUnitPrice Int
+  waterUnitPrice       Int
+  internetFee          Int
+  elevatorFeePerPerson Int
+  cleaningFeePerPerson Int
+  motorbikeFeePerExtra Int
+  freeMotorbikeCount   Int
+  otherFee             Int
+  changedById          Int?
+  changedByName        String?
+  changedAt            DateTime @default(now())
+
+  @@index([changedAt])
+  @@map("setting_history")
+}
+
+model Room {
+  id                        Int        @id @default(autoincrement())
+  name                      String     @unique
+  price                     Int
+  status                    RoomStatus @default(AVAILABLE)
+  occupantCount             Int        @default(0)
+  motorbikeCount            Int        @default(0)
+  internetEnabled           Boolean    @default(true)
+  initialElectricityReading Int        @default(0)
+  initialWaterReading       Int        @default(0)
+  electricityReading        Int        @default(0)
+  waterReading              Int        @default(0)
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
+  tenants                   Tenant[]
+  contracts                 Contract[]
+  invoices                  Invoice[]
+  meterReadings             MeterReading[]
+
+  @@map("rooms")
+}
+
+model Tenant {
+  id           Int      @id @default(autoincrement())
+  fullName     String
+  idCardNumber String   @unique
+  dateOfBirth  DateTime
+  hometown     String
+  roomId       Int?
+  room         Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([roomId])
+  @@map("tenants")
+}
+
+model Contract {
+  id        Int            @id @default(autoincrement())
+  roomId    Int
+  room      Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  price     Int
+  deposit   Int            @default(0)
+  startDate DateTime
+  endDate   DateTime
+  status    ContractStatus @default(ACTIVE)
+  note      String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([roomId])
+  @@map("contracts")
+}
+
+model Invoice {
+  id                   Int            @id @default(autoincrement())
+  roomId               Int
+  room                 Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  month                Int
+  year                 Int
+  roomPrice            Int
+  electricityPrev      Int
+  electricityCurrent   Int
+  electricityUnitPrice Int
+  waterPrev            Int
+  waterCurrent         Int
+  waterUnitPrice       Int
+  internetFee          Int
+  elevatorFee          Int
+  cleaningFee          Int
+  motorbikeFee         Int
+  otherFee             Int
+  occupantCount        Int
+  motorbikeCount       Int
+  totalAmount          Int
+  status               InvoiceStatus  @default(UNPAID)
+  paymentMethod        PaymentMethod?
+  paidAt               DateTime?
+  createdAt            DateTime       @default(now())
+
+  @@unique([roomId, year, month])
+  @@index([year, month])
+  @@map("invoices")
+}
+
+model MeterReading {
+  id                 Int      @id @default(autoincrement())
+  roomId             Int
+  room               Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  year               Int
+  month              Int
+  electricityReading Int
+  waterReading       Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([roomId, year, month])
+  @@index([roomId, year, month])
+  @@map("meter_readings")
+}
+
+// Immutable snapshot written on every create/edit of a MeterReading, for the
+// room-detail "Lịch sử chỉnh sửa chỉ số" table. Mirrors SettingHistory.
+model MeterReadingHistory {
+  id                 Int      @id @default(autoincrement())
+  roomId             Int
+  year               Int
+  month              Int
+  electricityReading Int
+  waterReading       Int
+  changedById        Int?
+  changedByName      String?
+  changedAt          DateTime @default(now())
+
+  @@index([roomId, changedAt])
+  @@map("meter_reading_history")
+}
