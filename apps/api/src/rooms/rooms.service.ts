@@ -78,6 +78,13 @@ export class RoomsService {
     return { message: 'Đã xoá phòng' };
   }
 
+  getReadingHistory(roomId: number) {
+    return this.prisma.meterReadingHistory.findMany({
+      where: { roomId },
+      orderBy: { changedAt: 'desc' },
+    });
+  }
+
   async bulkUpdateReadings(
     dto: BulkUpdateReadingsDto,
     user?: AuthUser,

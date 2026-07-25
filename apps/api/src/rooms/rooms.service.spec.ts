@@ -21,7 +21,7 @@ describe('RoomsService', () => {
       delete: jest.fn(),
     },
     meterReading: { findMany: jest.fn(), findFirst: jest.fn(), upsert: jest.fn() },
-    meterReadingHistory: { create: jest.fn() },
+    meterReadingHistory: { create: jest.fn(), findMany: jest.fn() },
     invoice: { findUnique: jest.fn() },
     $transaction: jest.fn(),
   };
@@ -84,6 +84,16 @@ describe('RoomsService', () => {
   it('throws NotFoundException for a missing room on detail', async () => {
     prisma.room.findUnique.mockResolvedValue(null);
     await expect(service.findOne(99)).rejects.toThrow(NotFoundException);
+  });
+
+  it('getReadingHistory returns history newest first', async () => {
+    prisma.meterReadingHistory.findMany.mockResolvedValue([{ id: 1 }]);
+    const rows = await service.getReadingHistory(1);
+    expect(prisma.meterReadingHistory.findMany).toHaveBeenCalledWith({
+      where: { roomId: 1 },
+      orderBy: { changedAt: 'desc' },
+    });
+    expect(rows).toHaveLength(1);
   });
 });
 

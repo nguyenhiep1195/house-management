@@ -41,6 +41,11 @@ export class RoomsController {
     return this.roomsService.bulkUpdateReadings(dto, user);
   }
 
+  @Get(':id/meter-readings/history')
+  getReadingHistory(@Param('id', ParseIntPipe) id: number) {
+    return this.roomsService.getReadingHistory(id);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.roomsService.findOne(id);
