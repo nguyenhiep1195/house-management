@@ -39,6 +39,11 @@ export class CreateRoomDto {
   @IsBoolean()
   internetEnabled?: boolean;
 
+  // Fee type for this room. Defaults to the default fee type when omitted.
+  @IsOptional()
+  @IsInt()
+  feeSettingId?: number;
+
   @IsInt()
   @Min(0)
   initialElectricityReading!: number;

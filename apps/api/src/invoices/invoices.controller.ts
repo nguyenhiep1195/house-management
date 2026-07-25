@@ -43,10 +43,7 @@ export class InvoicesController {
   }
 
   @Patch(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateInvoiceDto,
-  ) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateInvoiceDto) {
     return this.invoicesService.update(id, dto);
   }
 

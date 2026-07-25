@@ -1,9 +1,19 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
-import { Role } from '../generated/enums';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthUser } from '../auth/types/auth-user';
-import { UpdateSettingDto } from './dto/update-setting.dto';
+import { CreateFeeSettingDto } from './dto/create-fee-setting.dto';
+import { UpdateFeeSettingDto } from './dto/update-fee-setting.dto';
 import { SettingsService } from './settings.service';
 
 @Controller('settings')
@@ -11,19 +21,37 @@ export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
-  get() {
-    return this.settingsService.get();
+  list() {
+    return this.settingsService.list();
   }
 
-  @Roles(Role.ADMIN)
-  @Get('history')
-  getHistory() {
-    return this.settingsService.getHistory();
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  create(@Body() dto: CreateFeeSettingDto, @CurrentUser() user: AuthUser) {
+    return this.settingsService.create(dto, user);
   }
 
-  @Roles(Role.ADMIN)
-  @Patch()
-  update(@Body() dto: UpdateSettingDto, @CurrentUser() user: AuthUser) {
-    return this.settingsService.update(dto, user);
+  @Get(':id/history')
+  getHistory(@Param('id', ParseIntPipe) id: number) {
+    return this.settingsService.getHistory(id);
+  }
+
+  @Patch(':id/default')
+  setDefault(@Param('id', ParseIntPipe) id: number) {
+    return this.settingsService.setDefault(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateFeeSettingDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.settingsService.update(id, dto, user);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.settingsService.remove(id);
   }
 }

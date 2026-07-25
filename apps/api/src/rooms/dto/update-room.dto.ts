@@ -37,4 +37,8 @@ export class UpdateRoomDto {
   @IsOptional()
   @IsBoolean()
   internetEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  feeSettingId?: number;
 }

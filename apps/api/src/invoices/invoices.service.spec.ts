@@ -25,7 +25,7 @@ describe('InvoicesService', () => {
     contract: { findFirst: jest.fn() },
     meterReading: { findUnique: jest.fn() },
   };
-  const settings = { get: jest.fn() };
+  const settings = { resolve: jest.fn() };
 
   const setting = {
     id: 1,
@@ -56,7 +56,7 @@ describe('InvoicesService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    settings.get.mockResolvedValue(setting);
+    settings.resolve.mockResolvedValue(setting);
     prisma.contract.findFirst.mockResolvedValue(null);
     const moduleRef = await Test.createTestingModule({
       providers: [

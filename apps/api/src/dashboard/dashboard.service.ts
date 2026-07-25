@@ -104,7 +104,8 @@ export class DashboardService {
         waterConsumption: selected.waterConsumption,
       },
       invoices: {
-        paid: selectedList.filter((i) => i.status === InvoiceStatus.PAID).length,
+        paid: selectedList.filter((i) => i.status === InvoiceStatus.PAID)
+          .length,
         unpaid: selectedList.filter((i) => i.status === InvoiceStatus.UNPAID)
           .length,
         total: selectedList.length,

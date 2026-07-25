@@ -7,12 +7,14 @@ import {
 import { AuthUser } from '../auth/types/auth-user';
 import { InvoicesService } from '../invoices/invoices.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import { BulkUpdateReadingsDto } from './dto/bulk-update-readings.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 
 const ROOM_NAME_TAKEN = 'Tên phòng đã tồn tại';
 const ROOM_NOT_FOUND = 'Không tìm thấy phòng';
+const FEE_SETTING_NOT_FOUND = 'Không tìm thấy loại phí';
 const READING_PAID_LOCKED =
   'Hoá đơn kỳ này đã thanh toán, không thể sửa chỉ số';
 
@@ -21,7 +23,15 @@ export class RoomsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly invoicesService: InvoicesService,
+    private readonly settingsService: SettingsService,
   ) {}
+
+  // Ensure a fee type id refers to an existing type (FK would otherwise throw a
+  // raw P2003). Returns void; throws BadRequest with a friendly message.
+  private async assertFeeSettingExists(id: number): Promise<void> {
+    const found = await this.prisma.feeSetting.findUnique({ where: { id } });
+    if (!found) throw new BadRequestException(FEE_SETTING_NOT_FOUND);
+  }
 
   findAll() {
     return this.prisma.room.findMany({
@@ -49,9 +59,18 @@ export class RoomsService {
     });
     if (existing) throw new ConflictException(ROOM_NAME_TAKEN);
 
+    // Default to the default fee type when the caller doesn't pick one.
+    let feeSettingId = dto.feeSettingId;
+    if (feeSettingId != null) {
+      await this.assertFeeSettingExists(feeSettingId);
+    } else {
+      feeSettingId = (await this.settingsService.getDefault()).id;
+    }
+
     return this.prisma.room.create({
       data: {
         ...dto,
+        feeSettingId,
         price: dto.price ?? 0,
         electricityReading: dto.initialElectricityReading,
         waterReading: dto.initialWaterReading,
@@ -68,6 +87,10 @@ export class RoomsService {
         where: { name: dto.name },
       });
       if (existing) throw new ConflictException(ROOM_NAME_TAKEN);
+    }
+
+    if (dto.feeSettingId != null) {
+      await this.assertFeeSettingExists(dto.feeSettingId);
     }
 
     return this.prisma.room.update({ where: { id }, data: { ...dto } });

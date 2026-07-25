@@ -74,7 +74,10 @@ export class InvoicesService {
       );
     }
 
-    const setting = await this.settingsService.get();
+    // Resolve fee type: explicit override → room's assigned type → default.
+    const setting = await this.settingsService.resolve(
+      dto.feeSettingId ?? room.feeSettingId,
+    );
 
     // governing contract for this billing period: the room's latest contract
     // that started on or before the end of the billing month

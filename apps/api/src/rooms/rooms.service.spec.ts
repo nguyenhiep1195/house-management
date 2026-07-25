@@ -10,6 +10,7 @@ import {
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { InvoicesService } from '../invoices/invoices.service';
+import { SettingsService } from '../settings/settings.service';
 import { RoomsService } from './rooms.service';
 
 describe('RoomsService', () => {
@@ -29,9 +30,11 @@ describe('RoomsService', () => {
     },
     meterReadingHistory: { create: jest.fn(), findMany: jest.fn() },
     invoice: { findUnique: jest.fn() },
+    feeSetting: { findUnique: jest.fn() },
     $transaction: jest.fn(),
   };
   const invoices = { syncMeterReading: jest.fn() };
+  const settings = { getDefault: jest.fn() };
 
   const room = {
     id: 1,
@@ -51,11 +54,13 @@ describe('RoomsService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    settings.getDefault.mockResolvedValue({ id: 1 });
     const moduleRef = await Test.createTestingModule({
       providers: [
         RoomsService,
         { provide: PrismaService, useValue: prisma },
         { provide: InvoicesService, useValue: invoices },
+        { provide: SettingsService, useValue: settings },
       ],
     }).compile();
     service = moduleRef.get(RoomsService);
@@ -114,6 +119,7 @@ describe('RoomsService.bulkUpdateReadings', () => {
     },
     meterReadingHistory: { create: jest.fn() },
     invoice: { findUnique: jest.fn() },
+    feeSetting: { findUnique: jest.fn() },
     $transaction: jest.fn((ops: unknown) =>
       Array.isArray(ops)
         ? Promise.all(ops as Promise<unknown>[])
@@ -121,6 +127,7 @@ describe('RoomsService.bulkUpdateReadings', () => {
     ),
   };
   const invoices = { syncMeterReading: jest.fn() };
+  const settings = { getDefault: jest.fn() };
 
   const room = {
     id: 1,
@@ -138,6 +145,7 @@ describe('RoomsService.bulkUpdateReadings', () => {
         RoomsService,
         { provide: PrismaService, useValue: prisma },
         { provide: InvoicesService, useValue: invoices },
+        { provide: SettingsService, useValue: settings },
       ],
     }).compile();
     service = moduleRef.get(RoomsService);

@@ -29,12 +29,41 @@ async function main(): Promise<void> {
       console.log(`Seeded admin "${username}"`);
     }
 
-    const settingCount = await prisma.setting.count();
-    if (settingCount === 0) {
-      await prisma.setting.create({ data: {} });
-      console.log('Seeded default settings');
+    // Ensure exactly one default fee type ("Loại I") exists. `db push` renames
+    // the old single settings row into a FeeSetting via the name default; this
+    // marks it as default and backfills references that were left NULL.
+    let defaultFee = await prisma.feeSetting.findFirst({
+      where: { isDefault: true },
+      orderBy: { id: 'asc' },
+    });
+    if (!defaultFee) {
+      const any = await prisma.feeSetting.findFirst({ orderBy: { id: 'asc' } });
+      defaultFee = any
+        ? await prisma.feeSetting.update({
+            where: { id: any.id },
+            data: { isDefault: true },
+          })
+        : await prisma.feeSetting.create({
+            data: { name: 'Loại I', isDefault: true },
+          });
+      console.log(`Ensured default fee type "${defaultFee.name}"`);
     } else {
-      console.log('Settings already exist, skipping seed');
+      console.log(`Default fee type "${defaultFee.name}" already exists`);
+    }
+
+    // Point any orphaned history / rooms at the default fee type.
+    const historyBackfill = await prisma.feeSettingHistory.updateMany({
+      where: { feeSettingId: null },
+      data: { feeSettingId: defaultFee.id },
+    });
+    const roomsBackfill = await prisma.room.updateMany({
+      where: { feeSettingId: null },
+      data: { feeSettingId: defaultFee.id },
+    });
+    if (historyBackfill.count || roomsBackfill.count) {
+      console.log(
+        `Backfilled ${historyBackfill.count} history + ${roomsBackfill.count} rooms to "${defaultFee.name}"`,
+      );
     }
   } finally {
     await prisma.$disconnect();

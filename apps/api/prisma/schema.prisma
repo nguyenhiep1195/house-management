@@ -65,8 +65,14 @@ enum PaymentMethod {
   TRANSFER
 }
 
-model Setting {
+// A named fee configuration ("Loại I", "Loại II", …). Rooms are assigned a fee
+// type; invoices snapshot the resolved fee values at creation time.
+// Kept @@map("settings") so `prisma db push` ALTERs the existing table in place
+// (preserving data); the `name` default backfills the pre-existing single row.
+model FeeSetting {
   id                   Int      @id @default(autoincrement())
+  name                 String   @unique @default("Loại I")
+  isDefault            Boolean  @default(false)
   electricityUnitPrice Int      @default(3500)
   waterUnitPrice       Int      @default(15000)
   internetFee          Int      @default(100000)
@@ -75,16 +81,22 @@ model Setting {
   motorbikeFeePerExtra Int      @default(100000)
   freeMotorbikeCount   Int      @default(2)
   otherFee             Int      @default(0)
+  createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+
+  rooms   Room[]
+  history FeeSettingHistory[]
 
   @@map("settings")
 }
 
-// One immutable snapshot per fee-settings change, for the "Lịch sử" tab.
+// One immutable snapshot per fee-type change, for the per-type "Lịch sử" tab.
 // New fees apply only to invoices generated afterwards (invoices snapshot fees
 // at creation), so this is an audit trail, not a source for recalculation.
-model SettingHistory {
-  id                   Int      @id @default(autoincrement())
+model FeeSettingHistory {
+  id                   Int         @id @default(autoincrement())
+  feeSettingId         Int?
+  feeSetting           FeeSetting? @relation(fields: [feeSettingId], references: [id], onDelete: Cascade)
   electricityUnitPrice Int
   waterUnitPrice       Int
   internetFee          Int
@@ -95,8 +107,9 @@ model SettingHistory {
   otherFee             Int
   changedById          Int?
   changedByName        String?
-  changedAt            DateTime @default(now())
+  changedAt            DateTime    @default(now())
 
+  @@index([feeSettingId, changedAt])
   @@index([changedAt])
   @@map("setting_history")
 }
@@ -113,6 +126,8 @@ model Room {
   initialWaterReading       Int        @default(0)
   electricityReading        Int        @default(0)
   waterReading              Int        @default(0)
+  feeSettingId              Int?
+  feeSetting                FeeSetting? @relation(fields: [feeSettingId], references: [id], onDelete: Restrict)
   createdAt                 DateTime   @default(now())
   updatedAt                 DateTime   @updatedAt
   tenants                   Tenant[]
@@ -120,6 +135,7 @@ model Room {
   invoices                  Invoice[]
   meterReadings             MeterReading[]
 
+  @@index([feeSettingId])
   @@map("rooms")
 }
 
