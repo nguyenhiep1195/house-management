@@ -51,6 +51,8 @@ export class ContractsService {
           roomId: dto.roomId,
           price: dto.price,
           deposit: dto.deposit ?? 0,
+          initialElectricityReading: dto.initialElectricityReading,
+          initialWaterReading: dto.initialWaterReading,
           startDate: start,
           endDate: end,
           note: dto.note,
@@ -59,7 +61,12 @@ export class ContractsService {
       });
       await tx.room.update({
         where: { id: dto.roomId },
-        data: { status: 'OCCUPIED', price: dto.price },
+        data: {
+          status: 'OCCUPIED',
+          price: dto.price,
+          electricityReading: dto.initialElectricityReading,
+          waterReading: dto.initialWaterReading,
+        },
       });
       return contract;
     });
