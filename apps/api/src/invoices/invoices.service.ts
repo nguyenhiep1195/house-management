@@ -8,11 +8,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { PayInvoiceDto } from './dto/pay-invoice.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 
 const ROOM_NOT_FOUND = 'Không tìm thấy phòng';
 const INVOICE_NOT_FOUND = 'Không tìm thấy hoá đơn';
 const INVOICE_EXISTS = 'Phòng đã có hoá đơn cho tháng này';
 const DELETE_PAID = 'Không thể xoá hoá đơn đã thanh toán';
+const EDIT_PAID = 'Không thể sửa hoá đơn đã thanh toán';
 const ALREADY_UNPAID = 'Hoá đơn chưa được thanh toán';
 const INVOICE_PAID_LOCKED =
   'Hoá đơn kỳ này đã thanh toán, không thể sửa chỉ số';
@@ -204,6 +206,50 @@ export class InvoicesService {
     return this.prisma.invoice.update({
       where: { id },
       data: { status: 'UNPAID', paymentMethod: null, paidAt: null },
+      include: INVOICE_INCLUDE,
+    });
+  }
+
+  async update(id: number, dto: UpdateInvoiceDto) {
+    const invoice = await this.prisma.invoice.findUnique({ where: { id } });
+    if (!invoice) throw new NotFoundException(INVOICE_NOT_FOUND);
+    if (invoice.status === 'PAID') throw new ConflictException(EDIT_PAID);
+
+    const merged = {
+      roomPrice: dto.roomPrice ?? invoice.roomPrice,
+      electricityPrev: dto.electricityPrev ?? invoice.electricityPrev,
+      electricityCurrent: dto.electricityCurrent ?? invoice.electricityCurrent,
+      electricityUnitPrice:
+        dto.electricityUnitPrice ?? invoice.electricityUnitPrice,
+      waterPrev: dto.waterPrev ?? invoice.waterPrev,
+      waterCurrent: dto.waterCurrent ?? invoice.waterCurrent,
+      waterUnitPrice: dto.waterUnitPrice ?? invoice.waterUnitPrice,
+      internetFee: dto.internetFee ?? invoice.internetFee,
+      elevatorFee: dto.elevatorFee ?? invoice.elevatorFee,
+      cleaningFee: dto.cleaningFee ?? invoice.cleaningFee,
+      motorbikeFee: dto.motorbikeFee ?? invoice.motorbikeFee,
+      otherFee: dto.otherFee ?? invoice.otherFee,
+      occupantCount: dto.occupantCount ?? invoice.occupantCount,
+      motorbikeCount: dto.motorbikeCount ?? invoice.motorbikeCount,
+    };
+    const electricityAmount =
+      (merged.electricityCurrent - merged.electricityPrev) *
+      merged.electricityUnitPrice;
+    const waterAmount =
+      (merged.waterCurrent - merged.waterPrev) * merged.waterUnitPrice;
+    const totalAmount =
+      merged.roomPrice +
+      electricityAmount +
+      waterAmount +
+      merged.internetFee +
+      merged.elevatorFee +
+      merged.cleaningFee +
+      merged.motorbikeFee +
+      merged.otherFee;
+
+    return this.prisma.invoice.update({
+      where: { id },
+      data: { ...merged, totalAmount },
       include: INVOICE_INCLUDE,
     });
   }

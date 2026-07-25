@@ -308,4 +308,37 @@ describe('InvoicesService', () => {
       ConflictException,
     );
   });
+
+  it('update recomputes total and rejects paid invoices', async () => {
+    prisma.invoice.findUnique.mockResolvedValueOnce({ id: 5, status: 'PAID' });
+    await expect(service.update(5, { roomPrice: 1 })).rejects.toThrow(
+      ConflictException,
+    );
+
+    prisma.invoice.findUnique.mockResolvedValueOnce({
+      id: 6,
+      status: 'UNPAID',
+      roomPrice: 3000000,
+      electricityPrev: 100,
+      electricityCurrent: 250,
+      electricityUnitPrice: 3500,
+      waterPrev: 10,
+      waterCurrent: 22,
+      waterUnitPrice: 15000,
+      internetFee: 100000,
+      elevatorFee: 60000,
+      cleaningFee: 40000,
+      motorbikeFee: 100000,
+      otherFee: 50000,
+      occupantCount: 2,
+      motorbikeCount: 3,
+    });
+    prisma.invoice.update.mockResolvedValue({});
+    await service.update(6, { roomPrice: 3500000 });
+    const { data } = prisma.invoice.update.mock.calls.at(-1)![0];
+    expect(data.roomPrice).toBe(3500000);
+    expect(data.totalAmount).toBe(
+      3500000 + 525000 + 180000 + 100000 + 60000 + 40000 + 100000 + 50000,
+    );
+  });
 });

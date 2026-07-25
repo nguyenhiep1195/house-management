@@ -14,6 +14,7 @@ import {
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { GenerateInvoicesDto } from './dto/generate-invoices.dto';
 import { PayInvoiceDto } from './dto/pay-invoice.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { InvoicesService } from './invoices.service';
 
 @Controller('invoices')
@@ -39,6 +40,14 @@ export class InvoicesController {
   @HttpCode(HttpStatus.OK)
   generate(@Body() dto: GenerateInvoicesDto) {
     return this.invoicesService.generateForMonth(dto.month, dto.year);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateInvoiceDto,
+  ) {
+    return this.invoicesService.update(id, dto);
   }
 
   @Patch(':id/pay')
