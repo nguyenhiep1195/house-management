@@ -8,6 +8,7 @@ import { InvoiceList } from "@/features/invoices/components/invoice-list";
 import { InvoiceViewToggle } from "@/features/invoices/components/invoice-view-toggle";
 import { InvoicesToolbar } from "@/features/invoices/components/invoices-toolbar";
 import type { Invoice } from "@/features/invoices/types";
+import type { Room } from "@/features/rooms/types";
 import { apiFetch } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Hoá đơn" };
@@ -33,13 +34,18 @@ export default async function InvoicesPage({
   );
   const invoices = res.data ?? [];
 
+  const roomsRes = await apiFetch<Room[]>("/rooms", {
+    token: token ?? undefined,
+  });
+  const rooms = roomsRes.data ?? [];
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Hoá đơn"
         description="Hoá đơn hàng tháng của các phòng — tự động sinh vào ngày cuối tháng"
       />
-      <InvoicesToolbar month={month} year={year} />
+      <InvoicesToolbar month={month} year={year} rooms={rooms} />
       <div className="flex justify-end">
         <InvoiceViewToggle view={view} month={month} year={year} />
       </div>
