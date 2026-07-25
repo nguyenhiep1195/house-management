@@ -29,10 +29,16 @@ export async function createInvoice(
   roomId: number,
   month: number,
   year: number,
+  feeSettingId?: number,
 ): Promise<InvoiceActionState> {
   const res = await authedFetch<Invoice>("/invoices", {
     method: "POST",
-    body: JSON.stringify({ roomId, month, year }),
+    body: JSON.stringify({
+      roomId,
+      month,
+      year,
+      ...(feeSettingId ? { feeSettingId } : {}),
+    }),
   });
   if (!res.ok) return { error: res.error };
   revalidateInvoicePages(roomId);

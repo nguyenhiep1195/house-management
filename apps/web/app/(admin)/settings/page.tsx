@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { getCurrentUser, getSessionToken } from "@/features/auth/session";
 import { FeeSettingsSection } from "@/features/settings/components/fee-settings-section";
+import { SettingsTabs } from "@/features/settings/components/settings-tabs";
 import type { FeeSetting, FeeSettingHistory } from "@/features/settings/types";
 import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/shared/page-header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AppearanceSettings } from "@/features/settings/components/appearance-settings";
-import { ProfileSettings } from "@/features/settings/components/profile-settings";
 
 export const metadata: Metadata = {
   title: "Cài đặt",
@@ -15,16 +15,22 @@ export const metadata: Metadata = {
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
   const token = await getSessionToken();
-  let feeSetting: FeeSetting | null = null;
-  let feeHistory: FeeSettingHistory[] = [];
-  if (user?.role === "ADMIN" && token) {
-    const [settingRes, historyRes] = await Promise.all([
-      apiFetch<FeeSetting>("/settings", { token }),
-      apiFetch<FeeSettingHistory[]>("/settings/history", { token }),
-    ]);
-    feeSetting = settingRes.data;
-    feeHistory = historyRes.data ?? [];
+  let feeSettings: FeeSetting[] = [];
+  let historyByType: Record<number, FeeSettingHistory[]> = {};
+  if (token) {
+    const settingsRes = await apiFetch<FeeSetting[]>("/settings", { token });
+    feeSettings = settingsRes.data ?? [];
+    const histories = await Promise.all(
+      feeSettings.map((s) =>
+        apiFetch<FeeSettingHistory[]>(`/settings/${s.id}/history`, { token }),
+      ),
+    );
+    historyByType = Object.fromEntries(
+      feeSettings.map((s, i) => [s.id, histories[i].data ?? []]),
+    );
   }
 
   return (
@@ -33,20 +39,16 @@ export default async function SettingsPage() {
         title="Cài đặt"
         description="Quản lý giao diện và thông tin tài khoản"
       />
-      <Tabs defaultValue="appearance" className="gap-6">
-        <TabsList>
-          <TabsTrigger value="appearance">Giao diện</TabsTrigger>
-          <TabsTrigger value="profile">Hồ sơ</TabsTrigger>
-        </TabsList>
-        <TabsContent value="appearance">
-          <AppearanceSettings />
-        </TabsContent>
-        <TabsContent value="profile">
-          <ProfileSettings />
-        </TabsContent>
-      </Tabs>
-      {feeSetting ? (
-        <FeeSettingsSection setting={feeSetting} history={feeHistory} />
+      <Suspense fallback={null}>
+        <SettingsTabs user={user} />
+      </Suspense>
+      {feeSettings.length > 0 ? (
+        <Suspense fallback={null}>
+          <FeeSettingsSection
+            settings={feeSettings}
+            historyByType={historyByType}
+          />
+        </Suspense>
       ) : null}
     </>
   );

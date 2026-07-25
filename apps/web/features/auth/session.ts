@@ -2,15 +2,9 @@ import "server-only";
 import { cookies } from "next/headers";
 import { apiFetch } from "@/lib/api";
 import { SESSION_COOKIE } from "@/lib/auth-constants";
+import type { SessionUser } from "./types";
 
-export interface SessionUser {
-  id: number;
-  username: string;
-  email: string | null;
-  name: string;
-  phone: string | null;
-  role: "ADMIN" | "MANAGER";
-}
+export type { SessionUser };
 
 export async function getSessionToken(): Promise<string | null> {
   const store = await cookies();

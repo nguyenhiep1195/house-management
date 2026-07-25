@@ -24,6 +24,7 @@ import { RoomInvoicesSection } from "@/features/rooms/components/room-invoices-s
 import { RoomReadingEditor } from "@/features/rooms/components/room-reading-editor";
 import type { MeterReadingHistoryRow } from "@/features/rooms/reading-history-types";
 import { ROOM_STATUS_LABEL, type RoomDetail } from "@/features/rooms/types";
+import type { FeeSetting } from "@/features/settings/types";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
 
@@ -56,6 +57,12 @@ export default async function RoomDetailPage({
     { token: token ?? undefined },
   );
   const readingHistory = historyRes.data ?? [];
+
+  const feeSettingsRes = await apiFetch<FeeSetting[]>("/settings", {
+    token: token ?? undefined,
+  });
+  const feeSettings = feeSettingsRes.data ?? [];
+  const roomFeeType = feeSettings.find((s) => s.id === room.feeSettingId);
 
   const status = ROOM_STATUS_LABEL[room.status];
   const activeContract = room.contracts.find((c) => c.status === "ACTIVE");
@@ -117,6 +124,10 @@ export default async function RoomDetailPage({
             <p className="font-medium">
               {room.internetEnabled ? "Có sử dụng" : "Không sử dụng"}
             </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Loại phí</p>
+            <p className="font-medium">{roomFeeType?.name ?? "—"}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Chỉ số điện hiện tại</p>
@@ -228,6 +239,8 @@ export default async function RoomDetailPage({
         roomId={room.id}
         roomName={room.name}
         invoices={room.invoices}
+        feeSettings={feeSettings}
+        defaultFeeSettingId={room.feeSettingId}
       />
     </div>
   );

@@ -8,8 +8,8 @@ import { toast } from "sonner";
 import { generateInvoices } from "@/features/invoices/actions";
 import { BulkReadingsDialog } from "@/features/rooms/components/bulk-readings-dialog";
 import type { Room } from "@/features/rooms/types";
+import { MonthPicker } from "./month-picker";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function InvoicesToolbar({
@@ -70,31 +70,9 @@ export function InvoicesToolbar({
 
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
-      <div className="flex items-end gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="filter-month">Tháng</Label>
-          <Input
-            id="filter-month"
-            type="number"
-            min={1}
-            max={12}
-            className="w-20"
-            value={month}
-            onChange={(e) => navigate(Number(e.target.value), year)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="filter-year">Năm</Label>
-          <Input
-            id="filter-year"
-            type="number"
-            min={2000}
-            max={2100}
-            className="w-28"
-            value={year}
-            onChange={(e) => navigate(month, Number(e.target.value))}
-          />
-        </div>
+      <div className="grid gap-1.5">
+        <Label>Kỳ hoá đơn</Label>
+        <MonthPicker month={month} year={year} onChange={navigate} />
       </div>
       <div className="flex items-end gap-2">
         <Button

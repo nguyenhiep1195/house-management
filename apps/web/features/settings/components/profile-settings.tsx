@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { SessionUser } from "@/features/auth/types";
 
-export function ProfileSettings() {
+export function ProfileSettings({ user }: { user: SessionUser }) {
   const [saving, setSaving] = React.useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -39,8 +40,18 @@ export function ProfileSettings() {
         </CardHeader>
         <CardContent className="grid gap-4 py-6 sm:max-w-md">
           <div className="grid gap-2">
+            <Label htmlFor="username">Tên đăng nhập</Label>
+            <Input
+              id="username"
+              name="username"
+              defaultValue={user.username}
+              readOnly
+              disabled
+            />
+          </div>
+          <div className="grid gap-2">
             <Label htmlFor="name">Họ và tên</Label>
-            <Input id="name" name="name" defaultValue="Quản trị viên" required />
+            <Input id="name" name="name" defaultValue={user.name} required />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
@@ -48,13 +59,18 @@ export function ProfileSettings() {
               id="email"
               name="email"
               type="email"
-              defaultValue="admin@example.com"
-              required
+              defaultValue={user.email ?? ""}
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="phone">Số điện thoại</Label>
-            <Input id="phone" name="phone" type="tel" placeholder="0912 345 678" />
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              defaultValue={user.phone ?? ""}
+              placeholder="0912 345 678"
+            />
           </div>
         </CardContent>
         <CardFooter>

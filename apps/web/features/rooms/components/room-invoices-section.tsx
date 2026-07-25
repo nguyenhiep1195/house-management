@@ -6,16 +6,21 @@ import { Plus } from "lucide-react";
 import { CreateInvoiceDialog } from "@/features/invoices/components/create-invoice-dialog";
 import { InvoiceList } from "@/features/invoices/components/invoice-list";
 import type { Invoice } from "@/features/invoices/types";
+import type { FeeSetting } from "@/features/settings/types";
 import { Button } from "@/components/ui/button";
 
 export function RoomInvoicesSection({
   roomId,
   roomName,
   invoices,
+  feeSettings,
+  defaultFeeSettingId,
 }: {
   roomId: number;
   roomName: string;
   invoices: Invoice[];
+  feeSettings: FeeSetting[];
+  defaultFeeSettingId?: number | null;
 }) {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [dialogKey, setDialogKey] = React.useState(0);
@@ -41,6 +46,8 @@ export function RoomInvoicesSection({
         onOpenChange={setCreateOpen}
         roomId={roomId}
         roomName={roomName}
+        feeSettings={feeSettings}
+        defaultFeeSettingId={defaultFeeSettingId}
       />
     </section>
   );

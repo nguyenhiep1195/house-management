@@ -4,13 +4,14 @@ import * as React from "react";
 import { Eye, Pencil, Receipt, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteInvoice, unpayInvoice } from "@/features/invoices/actions";
+import { unpayInvoice } from "@/features/invoices/actions";
 import { type Invoice } from "@/features/invoices/types";
 import { computeFeeLines } from "@/features/invoices/lib/fee-lines";
 import { formatCurrency, formatMonth } from "@/lib/format";
 import { InvoiceDetailDialog } from "./invoice-detail-dialog";
 import { EditInvoiceDialog } from "./edit-invoice-dialog";
 import { PayInvoiceDialog } from "./pay-invoice-dialog";
+import { DeleteInvoiceDialog } from "./delete-invoice-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,15 +26,10 @@ export function InvoiceGrid({ invoices }: { invoices: Invoice[] }) {
   const [editingInvoice, setEditingInvoice] = React.useState<Invoice | null>(
     null,
   );
+  const [deletingInvoice, setDeletingInvoice] = React.useState<Invoice | null>(
+    null,
+  );
   const [, startTransition] = React.useTransition();
-
-  function handleDelete(invoice: Invoice) {
-    startTransition(async () => {
-      const result = await deleteInvoice(invoice.id, invoice.roomId);
-      if (result.error) toast.error(result.error);
-      else toast.success("Đã xoá hoá đơn");
-    });
-  }
 
   function handleUnpay(invoice: Invoice) {
     startTransition(async () => {
@@ -152,7 +148,7 @@ export function InvoiceGrid({ invoices }: { invoices: Invoice[] }) {
                     aria-label="Xoá hoá đơn"
                     title="Xoá hoá đơn"
                     disabled={invoice.status === "PAID"}
-                    onClick={() => handleDelete(invoice)}
+                    onClick={() => setDeletingInvoice(invoice)}
                   >
                     <Trash2 className="size-4 text-destructive" />
                   </Button>
@@ -173,6 +169,10 @@ export function InvoiceGrid({ invoices }: { invoices: Invoice[] }) {
       <EditInvoiceDialog
         invoice={editingInvoice}
         onOpenChange={(open) => !open && setEditingInvoice(null)}
+      />
+      <DeleteInvoiceDialog
+        invoice={deletingInvoice}
+        onOpenChange={(open) => !open && setDeletingInvoice(null)}
       />
     </>
   );

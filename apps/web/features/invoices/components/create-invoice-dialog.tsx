@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createInvoice } from "@/features/invoices/actions";
+import type { FeeSetting } from "@/features/settings/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,12 +17,22 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CreateInvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   roomId: number;
   roomName: string;
+  feeSettings: FeeSetting[];
+  /** The room's assigned fee type; used as the default selection. */
+  defaultFeeSettingId?: number | null;
 }
 
 export function CreateInvoiceDialog({
@@ -29,16 +40,25 @@ export function CreateInvoiceDialog({
   onOpenChange,
   roomId,
   roomName,
+  feeSettings,
+  defaultFeeSettingId,
 }: CreateInvoiceDialogProps) {
   const [pending, startTransition] = React.useTransition();
   const now = new Date();
   const [month, setMonth] = React.useState(now.getMonth() + 1);
   const [year, setYear] = React.useState(now.getFullYear());
+  const initialFeeId =
+    defaultFeeSettingId ??
+    feeSettings.find((s) => s.isDefault)?.id ??
+    feeSettings[0]?.id;
+  const [feeSettingId, setFeeSettingId] = React.useState<number | undefined>(
+    initialFeeId,
+  );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await createInvoice(roomId, month, year);
+      const result = await createInvoice(roomId, month, year, feeSettingId);
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -84,6 +104,25 @@ export function CreateInvoiceDialog({
                 required
               />
             </div>
+          </div>
+          <div className="grid gap-2">
+            <Label>Loại phí</Label>
+            <Select
+              value={feeSettingId ? String(feeSettingId) : undefined}
+              onValueChange={(v) => setFeeSettingId(Number(v))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn loại phí" />
+              </SelectTrigger>
+              <SelectContent>
+                {feeSettings.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.name}
+                    {s.isDefault ? " (mặc định)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <DialogFooter>
             <Button

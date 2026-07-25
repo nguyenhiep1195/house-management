@@ -5,6 +5,7 @@ import Link from "next/link";
 import { DoorOpen, Eye, Gauge, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { ROOM_STATUS_LABEL, type Room } from "@/features/rooms/types";
+import type { FeeSetting } from "@/features/settings/types";
 import { formatCurrency } from "@/lib/format";
 import { BulkReadingsDialog } from "./bulk-readings-dialog";
 import { DeleteRoomDialog } from "./delete-room-dialog";
@@ -20,12 +21,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export function RoomsTable({ rooms }: { rooms: Room[] }) {
+export function RoomsTable({
+  rooms,
+  feeSettings,
+}: {
+  rooms: Room[];
+  feeSettings: FeeSetting[];
+}) {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [bulkOpen, setBulkOpen] = React.useState(false);
   const [bulkKey, setBulkKey] = React.useState(0);
   const [editingRoom, setEditingRoom] = React.useState<Room | null>(null);
   const [deletingRoom, setDeletingRoom] = React.useState<Room | null>(null);
+  const feeNameById = React.useMemo(
+    () => new Map(feeSettings.map((s) => [s.id, s.name])),
+    [feeSettings],
+  );
 
   return (
     <>
@@ -68,6 +79,7 @@ export function RoomsTable({ rooms }: { rooms: Room[] }) {
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Số người</TableHead>
                 <TableHead>Số xe máy</TableHead>
+                <TableHead>Loại phí</TableHead>
                 <TableHead>Chỉ số điện</TableHead>
                 <TableHead>Chỉ số nước</TableHead>
                 <TableHead className="w-12" />
@@ -112,6 +124,11 @@ export function RoomsTable({ rooms }: { rooms: Room[] }) {
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {room.motorbikeCount}
+                    </TableCell>
+                    <TableCell>
+                      {room.feeSettingId
+                        ? (feeNameById.get(room.feeSettingId) ?? "—")
+                        : "—"}
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {room.electricityReading}
@@ -164,12 +181,14 @@ export function RoomsTable({ rooms }: { rooms: Room[] }) {
         key="create"
         open={createOpen}
         onOpenChange={setCreateOpen}
+        feeSettings={feeSettings}
       />
       <RoomFormDialog
         key={editingRoom?.id ?? "edit-none"}
         open={!!editingRoom}
         onOpenChange={(open) => !open && setEditingRoom(null)}
         room={editingRoom ?? undefined}
+        feeSettings={feeSettings}
       />
       <DeleteRoomDialog
         room={deletingRoom}

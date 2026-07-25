@@ -30,10 +30,10 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     label: "Vận hành",
     items: [
-      { title: "Phòng trọ", href: "/rooms", icon: DoorOpen },
-      { title: "Người thuê", href: "/tenants", icon: Users },
-      { title: "Hợp đồng", href: "/contracts", icon: FileText },
       { title: "Hoá đơn", href: "/invoices", icon: Receipt },
+      { title: "Phòng thuê", href: "/rooms", icon: DoorOpen },
+      { title: "Hợp đồng", href: "/contracts", icon: FileText },
+      { title: "Người thuê", href: "/tenants", icon: Users },
     ],
   },
   {

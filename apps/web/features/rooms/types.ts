@@ -20,6 +20,7 @@ export interface Room {
   occupantCount: number;
   motorbikeCount: number;
   internetEnabled: boolean;
+  feeSettingId: number | null;
   initialElectricityReading: number;
   initialWaterReading: number;
   electricityReading: number;

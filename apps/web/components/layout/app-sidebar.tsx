@@ -67,6 +67,7 @@ export function AppSidebar({ role }: { role: Role }) {
                           ? pathname === "/"
                           : pathname.startsWith(item.href)
                       }
+                      className="h-9 text-base data-active:bg-primary data-active:text-primary-foreground data-active:hover:bg-primary data-active:hover:text-primary-foreground"
                     >
                       <Link href={item.href}>
                         <item.icon />

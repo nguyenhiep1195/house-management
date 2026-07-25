@@ -62,7 +62,18 @@ export function FeeSettingsForm({ setting }: { setting: FeeSetting }) {
         </CardDescription>
       </CardHeader>
       <form action={formAction}>
+        <input type="hidden" name="id" value={setting.id} />
         <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2 sm:col-span-2">
+            <Label htmlFor={`fee-name-${setting.id}`}>Tên loại phí</Label>
+            <Input
+              id={`fee-name-${setting.id}`}
+              name="name"
+              defaultValue={setting.name}
+              maxLength={50}
+              required
+            />
+          </div>
           {FIELDS.map((field) => (
             <div key={field.name} className="grid gap-2">
               <Label htmlFor={`fee-${field.name}`}>{field.label}</Label>

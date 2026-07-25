@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -13,7 +11,6 @@ import {
 } from "recharts";
 
 import type { DashboardStats } from "@/features/dashboard/types";
-import { formatCurrency } from "@/lib/format";
 import {
   Card,
   CardContent,
@@ -39,10 +36,6 @@ const roomConfig = {
 const invoiceConfig = {
   paid: { label: "Đã thanh toán", color: "var(--chart-5)" },
   unpaid: { label: "Chưa thanh toán", color: "var(--chart-2)" },
-} satisfies ChartConfig;
-
-const revenueConfig = {
-  revenue: { label: "Doanh thu", color: "var(--chart-4)" },
 } satisfies ChartConfig;
 
 const utilityConfig = {
@@ -78,14 +71,11 @@ export function DashboardCharts({ stats }: { stats: DashboardStats }) {
 
   const trendData = trend.map((t) => ({
     label: `T${t.month}`,
-    revenue: t.revenue,
     electricity: t.electricityConsumption,
     water: t.waterConsumption,
   }));
 
-  const hasTrend = trendData.some(
-    (t) => t.revenue > 0 || t.electricity > 0 || t.water > 0,
-  );
+  const hasTrend = trendData.some((t) => t.electricity > 0 || t.water > 0);
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -164,52 +154,7 @@ export function DashboardCharts({ stats }: { stats: DashboardStats }) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Doanh thu 6 tháng gần nhất</CardTitle>
-          <CardDescription>Tổng tiền hoá đơn đã thanh toán theo tháng</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!hasTrend ? (
-            <EmptyState message="Chưa có dữ liệu hoá đơn." />
-          ) : (
-            <ChartContainer
-              config={revenueConfig}
-              className="aspect-auto h-[250px] w-full"
-            >
-              <BarChart data={trendData} accessibilityLayer>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  width={0}
-                  tick={false}
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => (
-                        <span className="font-mono font-medium tabular-nums">
-                          {formatCurrency(Number(value))}
-                        </span>
-                      )}
-                    />
-                  }
-                />
-                <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
-              </BarChart>
-            </ChartContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
+      <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>Tiêu thụ điện &amp; nước 6 tháng</CardTitle>
           <CardDescription>Chỉ số điện (kWh) và nước (m³) theo tháng</CardDescription>

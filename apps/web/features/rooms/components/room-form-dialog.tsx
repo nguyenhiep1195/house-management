@@ -11,6 +11,7 @@ import {
   type RoomFormState,
 } from "@/features/rooms/actions";
 import { ROOM_STATUS_LABEL, type Room, type RoomStatus } from "@/features/rooms/types";
+import type { FeeSetting } from "@/features/settings/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -38,14 +39,27 @@ interface RoomFormDialogProps {
   onOpenChange: (open: boolean) => void;
   /** When set, the dialog edits this room; otherwise it creates a new one. */
   room?: Room;
+  feeSettings: FeeSetting[];
 }
 
-export function RoomFormDialog({ open, onOpenChange, room }: RoomFormDialogProps) {
+export function RoomFormDialog({
+  open,
+  onOpenChange,
+  room,
+  feeSettings,
+}: RoomFormDialogProps) {
   const isEdit = !!room;
   const action = isEdit ? updateRoom : createRoom;
   const [state, formAction, pending] = useActionState(action, initialState);
   const [status, setStatus] = React.useState<RoomStatus>(
     room?.status ?? "AVAILABLE",
+  );
+  const defaultFeeId =
+    room?.feeSettingId ??
+    feeSettings.find((s) => s.isDefault)?.id ??
+    feeSettings[0]?.id;
+  const [feeSettingId, setFeeSettingId] = React.useState<number | undefined>(
+    defaultFeeId,
   );
   const lastSuccess = React.useRef(false);
 
@@ -80,6 +94,11 @@ export function RoomFormDialog({ open, onOpenChange, room }: RoomFormDialogProps
         <form action={formAction} className="grid gap-4">
           {isEdit ? <input type="hidden" name="id" value={room.id} /> : null}
           {isEdit ? <input type="hidden" name="status" value={status} /> : null}
+          <input
+            type="hidden"
+            name="feeSettingId"
+            value={feeSettingId ?? ""}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="room-name">
@@ -111,6 +130,25 @@ export function RoomFormDialog({ open, onOpenChange, room }: RoomFormDialogProps
               <p className="text-xs text-muted-foreground">
                 Miễn phí 2 xe, từ xe thứ 3 tính phí theo cài đặt.
               </p>
+            </div>
+            <div className="grid gap-2">
+              <Label>Loại phí</Label>
+              <Select
+                value={feeSettingId ? String(feeSettingId) : undefined}
+                onValueChange={(value) => setFeeSettingId(Number(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn loại phí" />
+                </SelectTrigger>
+                <SelectContent>
+                  {feeSettings.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
+                      {s.isDefault ? " (mặc định)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {isEdit ? (
               <div className="grid gap-2">

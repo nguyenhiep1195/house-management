@@ -32,6 +32,7 @@ export async function createRoom(
       occupantCount: Number(formData.get("occupantCount") ?? 0),
       motorbikeCount: Number(formData.get("motorbikeCount") ?? 0),
       internetEnabled: formData.get("internetEnabled") === "on",
+      feeSettingId: Number(formData.get("feeSettingId")) || undefined,
       initialElectricityReading: Number(
         formData.get("initialElectricityReading") ?? 0,
       ),
@@ -57,6 +58,7 @@ export async function updateRoom(
       occupantCount: Number(formData.get("occupantCount") ?? 0),
       motorbikeCount: Number(formData.get("motorbikeCount") ?? 0),
       internetEnabled: formData.get("internetEnabled") === "on",
+      feeSettingId: Number(formData.get("feeSettingId")) || undefined,
     }),
   });
   if (!res.ok) return { error: res.error };

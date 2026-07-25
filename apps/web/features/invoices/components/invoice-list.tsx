@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteInvoice, unpayInvoice } from "@/features/invoices/actions";
+import { unpayInvoice } from "@/features/invoices/actions";
 import {
   PAYMENT_METHOD_LABEL,
   type Invoice,
@@ -21,6 +21,7 @@ import { formatCurrency, formatDate, formatMonth } from "@/lib/format";
 import { InvoiceDetailDialog } from "./invoice-detail-dialog";
 import { EditInvoiceDialog } from "./edit-invoice-dialog";
 import { PayInvoiceDialog } from "./pay-invoice-dialog";
+import { DeleteInvoiceDialog } from "./delete-invoice-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,16 +49,11 @@ export function InvoiceList({
   const [editingInvoice, setEditingInvoice] = React.useState<Invoice | null>(
     null,
   );
+  const [deletingInvoice, setDeletingInvoice] = React.useState<Invoice | null>(
+    null,
+  );
   const [expanded, setExpanded] = React.useState<number | null>(null);
   const [, startTransition] = React.useTransition();
-
-  function handleDelete(invoice: Invoice) {
-    startTransition(async () => {
-      const result = await deleteInvoice(invoice.id, invoice.roomId);
-      if (result.error) toast.error(result.error);
-      else toast.success("Đã xoá hoá đơn");
-    });
-  }
 
   function handleUnpay(invoice: Invoice) {
     startTransition(async () => {
@@ -203,7 +199,7 @@ export function InvoiceList({
                           aria-label="Xoá hoá đơn"
                           title="Xoá hoá đơn"
                           disabled={invoice.status === "PAID"}
-                          onClick={() => handleDelete(invoice)}
+                          onClick={() => setDeletingInvoice(invoice)}
                         >
                           <Trash2 className="size-4 text-destructive" />
                         </Button>
@@ -233,6 +229,12 @@ export function InvoiceList({
                               </dd>
                             </div>
                           ))}
+                          <div className="mt-1 flex items-center justify-between gap-4 border-t pt-2 font-semibold sm:col-span-2">
+                            <dt>Tổng cộng</dt>
+                            <dd className="tabular-nums">
+                              {formatCurrency(invoice.totalAmount)}
+                            </dd>
+                          </div>
                         </dl>
                         {invoice.status === "PAID" && invoice.paidAt ? (
                           <p className="mt-2 text-xs text-muted-foreground">
@@ -259,6 +261,10 @@ export function InvoiceList({
       <EditInvoiceDialog
         invoice={editingInvoice}
         onOpenChange={(open) => !open && setEditingInvoice(null)}
+      />
+      <DeleteInvoiceDialog
+        invoice={deletingInvoice}
+        onOpenChange={(open) => !open && setDeletingInvoice(null)}
       />
     </>
   );
