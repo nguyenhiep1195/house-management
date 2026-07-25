@@ -167,6 +167,34 @@ export function ContractFormDialog({
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="contract-initialElectricityReading">
+                Chỉ số điện ban đầu (kWh){" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="contract-initialElectricityReading"
+                name="initialElectricityReading"
+                type="number"
+                min={0}
+                defaultValue={contract?.initialElectricityReading ?? 0}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="contract-initialWaterReading">
+                Chỉ số nước ban đầu (m³){" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="contract-initialWaterReading"
+                name="initialWaterReading"
+                type="number"
+                min={0}
+                defaultValue={contract?.initialWaterReading ?? 0}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="contract-startDate">
                 Từ ngày <span className="text-destructive">*</span>
               </Label>

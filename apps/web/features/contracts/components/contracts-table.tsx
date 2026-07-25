@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { FileText, MoreHorizontal, Plus } from "lucide-react";
+import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
   CONTRACT_STATUS_LABEL,
@@ -14,13 +14,6 @@ import { ContractFormDialog } from "./contract-form-dialog";
 import { DeleteContractDialog } from "./delete-contract-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -124,32 +117,27 @@ export function ContractsTable({
                       <Badge variant={status.variant}>{status.label}</Badge>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Thao tác với hợp đồng phòng ${contract.room.name}`}
-                          >
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onSelect={() => setEditingContract(contract)}
-                          >
-                            Sửa
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            disabled={contract.status === "ACTIVE"}
-                            onSelect={() => setDeletingContract(contract)}
-                          >
-                            Xoá
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Sửa hợp đồng phòng ${contract.room.name}`}
+                          title="Sửa"
+                          onClick={() => setEditingContract(contract)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Xoá hợp đồng phòng ${contract.room.name}`}
+                          title="Xoá"
+                          disabled={contract.status === "ACTIVE"}
+                          onClick={() => setDeletingContract(contract)}
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
