@@ -257,4 +257,55 @@ describe('InvoicesService', () => {
     prisma.invoice.findUnique.mockResolvedValue(null);
     await expect(service.unpay(9)).rejects.toThrow(NotFoundException);
   });
+
+  it('syncMeterReading is a no-op when no invoice exists', async () => {
+    prisma.invoice.findUnique.mockResolvedValue(null);
+    prisma.meterReading.findUnique.mockResolvedValue({
+      electricityReading: 400,
+      waterReading: 40,
+    });
+    await service.syncMeterReading(1, 2026, 7);
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
+  });
+
+  it('syncMeterReading recomputes an unpaid invoice from snapshot prices', async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: 5,
+      status: 'UNPAID',
+      roomPrice: 3000000,
+      electricityPrev: 100,
+      electricityUnitPrice: 3500,
+      waterPrev: 10,
+      waterUnitPrice: 15000,
+      internetFee: 100000,
+      elevatorFee: 60000,
+      cleaningFee: 40000,
+      motorbikeFee: 100000,
+      otherFee: 50000,
+    });
+    prisma.meterReading.findUnique.mockResolvedValue({
+      electricityReading: 250,
+      waterReading: 22,
+    });
+    prisma.invoice.update.mockResolvedValue({});
+    await service.syncMeterReading(1, 2026, 7);
+    const { data } = prisma.invoice.update.mock.calls[0][0];
+    // elec (250-100)*3500=525000 ; water (22-10)*15000=180000
+    expect(data.electricityCurrent).toBe(250);
+    expect(data.waterCurrent).toBe(22);
+    expect(data.totalAmount).toBe(
+      3000000 + 525000 + 180000 + 100000 + 60000 + 40000 + 100000 + 50000,
+    );
+  });
+
+  it('syncMeterReading refuses to touch a PAID invoice', async () => {
+    prisma.invoice.findUnique.mockResolvedValue({ id: 5, status: 'PAID' });
+    prisma.meterReading.findUnique.mockResolvedValue({
+      electricityReading: 250,
+      waterReading: 22,
+    });
+    await expect(service.syncMeterReading(1, 2026, 7)).rejects.toThrow(
+      ConflictException,
+    );
+  });
 });

@@ -14,6 +14,8 @@ const INVOICE_NOT_FOUND = 'Không tìm thấy hoá đơn';
 const INVOICE_EXISTS = 'Phòng đã có hoá đơn cho tháng này';
 const DELETE_PAID = 'Không thể xoá hoá đơn đã thanh toán';
 const ALREADY_UNPAID = 'Hoá đơn chưa được thanh toán';
+const INVOICE_PAID_LOCKED =
+  'Hoá đơn kỳ này đã thanh toán, không thể sửa chỉ số';
 
 const INVOICE_INCLUDE = {
   room: { select: { id: true, name: true } },
@@ -214,11 +216,43 @@ export class InvoicesService {
     return { message: 'Đã xoá hoá đơn' };
   }
 
-  // TODO(Task 4): flesh out to recalculate and update the invoice for the given room/month.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async syncMeterReading(
-    _roomId: number,
-    _year: number,
-    _month: number,
-  ): Promise<void> {}
+    roomId: number,
+    year: number,
+    month: number,
+  ): Promise<void> {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { roomId_year_month: { roomId, year, month } },
+    });
+    if (!invoice) return;
+    if (invoice.status === 'PAID') {
+      throw new ConflictException(INVOICE_PAID_LOCKED);
+    }
+    const reading = await this.prisma.meterReading.findUnique({
+      where: { roomId_year_month: { roomId, year, month } },
+    });
+    if (!reading) return;
+
+    const electricityCurrent = reading.electricityReading;
+    const waterCurrent = reading.waterReading;
+    const electricityAmount =
+      (electricityCurrent - invoice.electricityPrev) *
+      invoice.electricityUnitPrice;
+    const waterAmount =
+      (waterCurrent - invoice.waterPrev) * invoice.waterUnitPrice;
+    const totalAmount =
+      invoice.roomPrice +
+      electricityAmount +
+      waterAmount +
+      invoice.internetFee +
+      invoice.elevatorFee +
+      invoice.cleaningFee +
+      invoice.motorbikeFee +
+      invoice.otherFee;
+
+    await this.prisma.invoice.update({
+      where: { id: invoice.id },
+      data: { electricityCurrent, waterCurrent, totalAmount },
+    });
+  }
 }
