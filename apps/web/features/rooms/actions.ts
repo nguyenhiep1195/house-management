@@ -76,12 +76,15 @@ export async function deleteRoom(id: number): Promise<RoomFormState> {
 
 export async function bulkUpdateReadings(
   items: MeterReadingItem[],
+  year: number,
+  month: number,
 ): Promise<RoomFormState> {
   const res = await authedFetch<{ message: string; updated: number }>(
     "/rooms/meter-readings",
-    { method: "PATCH", body: JSON.stringify({ items }) },
+    { method: "PATCH", body: JSON.stringify({ items, year, month }) },
   );
   if (!res.ok) return { error: res.error };
   revalidatePath("/rooms");
+  revalidatePath("/invoices");
   return { error: null, success: true };
 }

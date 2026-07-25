@@ -42,13 +42,24 @@ export async function createInvoice(
 export async function generateInvoices(
   month: number,
   year: number,
-): Promise<InvoiceActionState & { created?: number; skipped?: number }> {
+): Promise<
+  InvoiceActionState & {
+    created?: number;
+    skipped?: number;
+    missingReadings?: { roomId: number; roomName: string }[];
+  }
+> {
   const token = await getSessionToken();
   if (!token) return { error: "Phiên đăng nhập đã hết hạn" };
-  const res = await apiFetch<{ created: number; skipped: number }>(
-    "/invoices/generate",
-    { method: "POST", token, body: JSON.stringify({ month, year }) },
-  );
+  const res = await apiFetch<{
+    created: number;
+    skipped: number;
+    missingReadings: { roomId: number; roomName: string }[];
+  }>("/invoices/generate", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ month, year }),
+  });
   if (!res.ok) return { error: res.error };
   revalidateInvoicePages();
   return { error: null, success: true, ...res.data };
@@ -87,6 +98,37 @@ export async function deleteInvoice(
 ): Promise<InvoiceActionState> {
   const res = await authedFetch<{ message: string }>(`/invoices/${id}`, {
     method: "DELETE",
+  });
+  if (!res.ok) return { error: res.error };
+  revalidateInvoicePages(roomId);
+  return { error: null, success: true };
+}
+
+export interface InvoiceEditable {
+  roomPrice: number;
+  electricityPrev: number;
+  electricityCurrent: number;
+  electricityUnitPrice: number;
+  waterPrev: number;
+  waterCurrent: number;
+  waterUnitPrice: number;
+  internetFee: number;
+  elevatorFee: number;
+  cleaningFee: number;
+  motorbikeFee: number;
+  otherFee: number;
+  occupantCount: number;
+  motorbikeCount: number;
+}
+
+export async function updateInvoice(
+  id: number,
+  data: Partial<InvoiceEditable>,
+  roomId?: number,
+): Promise<InvoiceActionState> {
+  const res = await authedFetch<Invoice>(`/invoices/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
   });
   if (!res.ok) return { error: res.error };
   revalidateInvoicePages(roomId);

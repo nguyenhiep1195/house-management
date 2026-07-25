@@ -86,7 +86,12 @@ export function BulkReadingsDialog({
     }
 
     startTransition(async () => {
-      const result = await bulkUpdateReadings(items);
+      const now = new Date();
+      const result = await bulkUpdateReadings(
+        items,
+        now.getFullYear(),
+        now.getMonth() + 1,
+      );
       if (result.error) {
         toast.error(result.error);
       } else {
