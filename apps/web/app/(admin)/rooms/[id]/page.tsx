@@ -19,7 +19,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getCurrentUser, getSessionToken } from "@/features/auth/session";
+import { ReadingHistoryTable } from "@/features/rooms/components/reading-history-table";
 import { RoomInvoicesSection } from "@/features/rooms/components/room-invoices-section";
+import type { MeterReadingHistoryRow } from "@/features/rooms/reading-history-types";
 import { ROOM_STATUS_LABEL, type RoomDetail } from "@/features/rooms/types";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -47,6 +49,13 @@ export default async function RoomDetailPage({
   });
   if (!res.data) notFound();
   const room = res.data;
+
+  const historyRes = await apiFetch<MeterReadingHistoryRow[]>(
+    `/rooms/${id}/meter-readings/history`,
+    { token: token ?? undefined },
+  );
+  const readingHistory = historyRes.data ?? [];
+
   const status = ROOM_STATUS_LABEL[room.status];
   const activeContract = room.contracts.find((c) => c.status === "ACTIVE");
 
@@ -201,6 +210,11 @@ export default async function RoomDetailPage({
             </Table>
           </div>
         )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Lịch sử chỉnh sửa chỉ số</h2>
+        <ReadingHistoryTable rows={readingHistory} />
       </section>
 
       <RoomInvoicesSection
