@@ -139,12 +139,14 @@ model Tenant {
 }
 
 model Contract {
-  id        Int            @id @default(autoincrement())
-  roomId    Int
-  room      Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  price     Int
-  deposit   Int            @default(0)
-  startDate DateTime
+  id                        Int            @id @default(autoincrement())
+  roomId                    Int
+  room                      Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  price                     Int
+  deposit                   Int            @default(0)
+  initialElectricityReading Int            @default(0)
+  initialWaterReading       Int            @default(0)
+  startDate                 DateTime
   endDate   DateTime
   status    ContractStatus @default(ACTIVE)
   note      String?
