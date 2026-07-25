@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal, Plus, UserCog } from "lucide-react";
+import { Lock, Pencil, Plus, Trash2, Unlock, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 import { toggleUserActive } from "@/features/users/actions";
@@ -10,13 +10,6 @@ import { DeleteUserDialog } from "./delete-user-dialog";
 import { UserFormDialog } from "./user-form-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -98,32 +91,43 @@ export function UsersTable({ users }: { users: ManagedUser[] }) {
                     {new Date(user.createdAt).toLocaleDateString("vi-VN")}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Thao tác với ${user.name}`}
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setEditingUser(user)}>
-                          Sửa
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleToggleActive(user)}>
-                          {user.isActive ? "Khoá tài khoản" : "Mở khoá tài khoản"}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onSelect={() => setDeletingUser(user)}
-                        >
-                          Xoá
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Sửa ${user.name}`}
+                        title="Sửa"
+                        onClick={() => setEditingUser(user)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={
+                          user.isActive
+                            ? `Khoá tài khoản ${user.name}`
+                            : `Mở khoá tài khoản ${user.name}`
+                        }
+                        title={user.isActive ? "Khoá tài khoản" : "Mở khoá tài khoản"}
+                        onClick={() => handleToggleActive(user)}
+                      >
+                        {user.isActive ? (
+                          <Lock className="size-4" />
+                        ) : (
+                          <Unlock className="size-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Xoá ${user.name}`}
+                        title="Xoá"
+                        onClick={() => setDeletingUser(user)}
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

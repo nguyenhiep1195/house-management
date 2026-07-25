@@ -36,6 +36,10 @@ export async function createContract(
       roomId: Number(formData.get("roomId")),
       price: Number(formData.get("price") ?? 0),
       deposit: Number(formData.get("deposit") ?? 0),
+      initialElectricityReading: Number(
+        formData.get("initialElectricityReading") ?? 0,
+      ),
+      initialWaterReading: Number(formData.get("initialWaterReading") ?? 0),
       startDate: String(formData.get("startDate") ?? ""),
       endDate: String(formData.get("endDate") ?? ""),
       ...(note ? { note } : {}),
@@ -57,6 +61,10 @@ export async function updateContract(
     body: JSON.stringify({
       price: Number(formData.get("price") ?? 0),
       deposit: Number(formData.get("deposit") ?? 0),
+      initialElectricityReading: Number(
+        formData.get("initialElectricityReading") ?? 0,
+      ),
+      initialWaterReading: Number(formData.get("initialWaterReading") ?? 0),
       startDate: String(formData.get("startDate") ?? ""),
       endDate: String(formData.get("endDate") ?? ""),
       status: String(formData.get("status") ?? "ACTIVE"),

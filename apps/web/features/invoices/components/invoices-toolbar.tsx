@@ -45,17 +45,25 @@ export function InvoicesToolbar({
         return;
       }
       const missing = result.missingReadings ?? [];
+      const skipped = result.skippedRooms ?? [];
+      toast.success(
+        `Đã tạo ${result.created ?? 0} hoá đơn tháng ${month}/${year}`,
+      );
+      if (skipped.length > 0) {
+        toast.info(
+          `${skipped.length} phòng đã có hoá đơn tháng này: ${skipped
+            .map((s) => s.roomName)
+            .join(", ")}`,
+        );
+      }
       if (missing.length > 0) {
         toast.warning(
           `Chưa nhập chỉ số cho ${missing.length} phòng: ${missing
             .map((m) => m.roomName)
             .join(", ")}. Vui lòng cập nhật chỉ số điện nước.`,
         );
+        openReadings();
       }
-      toast.success(
-        `Đã tạo ${result.created ?? 0} hoá đơn, bỏ qua ${result.skipped ?? 0} phòng đã có hoá đơn`,
-      );
-      if (missing.length > 0) openReadings();
       router.refresh();
     });
   }

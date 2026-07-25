@@ -21,6 +21,7 @@ import {
 import { getCurrentUser, getSessionToken } from "@/features/auth/session";
 import { ReadingHistoryTable } from "@/features/rooms/components/reading-history-table";
 import { RoomInvoicesSection } from "@/features/rooms/components/room-invoices-section";
+import { RoomReadingEditor } from "@/features/rooms/components/room-reading-editor";
 import type { MeterReadingHistoryRow } from "@/features/rooms/reading-history-types";
 import { ROOM_STATUS_LABEL, type RoomDetail } from "@/features/rooms/types";
 import { apiFetch } from "@/lib/api";
@@ -67,11 +68,17 @@ export default async function RoomDetailPage({
       />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2">
             Thông tin phòng
             <Badge variant={status.variant}>{status.label}</Badge>
           </CardTitle>
+          <RoomReadingEditor
+            roomId={room.id}
+            roomName={room.name}
+            electricityReading={room.electricityReading}
+            waterReading={room.waterReading}
+          />
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>

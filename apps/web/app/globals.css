@@ -150,6 +150,11 @@ html[data-font-size="lg"] {
   --ring: oklch(0.623 0.214 259.815);
   --sidebar-primary: oklch(0.546 0.245 262.881);
   --sidebar-ring: oklch(0.623 0.214 259.815);
+  --chart-1: oklch(0.85 0.05 262.881);
+  --chart-2: oklch(0.77 0.09 262.881);
+  --chart-3: oklch(0.7 0.13 262.881);
+  --chart-4: oklch(0.62 0.17 262.881);
+  --chart-5: oklch(0.55 0.2 262.881);
 }
 .dark[data-accent="blue"] {
   --primary: oklch(0.623 0.214 259.815);
@@ -162,6 +167,11 @@ html[data-font-size="lg"] {
   --ring: oklch(0.723 0.219 149.579);
   --sidebar-primary: oklch(0.627 0.194 149.214);
   --sidebar-ring: oklch(0.723 0.219 149.579);
+  --chart-1: oklch(0.85 0.05 149.214);
+  --chart-2: oklch(0.77 0.09 149.214);
+  --chart-3: oklch(0.7 0.12 149.214);
+  --chart-4: oklch(0.62 0.15 149.214);
+  --chart-5: oklch(0.55 0.17 149.214);
 }
 .dark[data-accent="green"] {
   --primary: oklch(0.723 0.219 149.579);
@@ -174,6 +184,11 @@ html[data-font-size="lg"] {
   --ring: oklch(0.606 0.25 292.717);
   --sidebar-primary: oklch(0.541 0.281 293.009);
   --sidebar-ring: oklch(0.606 0.25 292.717);
+  --chart-1: oklch(0.85 0.05 293.009);
+  --chart-2: oklch(0.77 0.1 293.009);
+  --chart-3: oklch(0.7 0.15 293.009);
+  --chart-4: oklch(0.62 0.2 293.009);
+  --chart-5: oklch(0.55 0.24 293.009);
 }
 .dark[data-accent="violet"] {
   --primary: oklch(0.606 0.25 292.717);
@@ -186,6 +201,11 @@ html[data-font-size="lg"] {
   --ring: oklch(0.705 0.213 47.604);
   --sidebar-primary: oklch(0.646 0.222 41.116);
   --sidebar-ring: oklch(0.705 0.213 47.604);
+  --chart-1: oklch(0.85 0.05 41.116);
+  --chart-2: oklch(0.77 0.09 41.116);
+  --chart-3: oklch(0.7 0.13 41.116);
+  --chart-4: oklch(0.62 0.17 41.116);
+  --chart-5: oklch(0.55 0.2 41.116);
 }
 .dark[data-accent="orange"] {
   --primary: oklch(0.705 0.213 47.604);
@@ -198,6 +218,11 @@ html[data-font-size="lg"] {
   --ring: oklch(0.645 0.246 16.439);
   --sidebar-primary: oklch(0.586 0.253 17.585);
   --sidebar-ring: oklch(0.645 0.246 16.439);
+  --chart-1: oklch(0.85 0.05 17.585);
+  --chart-2: oklch(0.77 0.1 17.585);
+  --chart-3: oklch(0.7 0.15 17.585);
+  --chart-4: oklch(0.62 0.2 17.585);
+  --chart-5: oklch(0.55 0.24 17.585);
 }
 .dark[data-accent="rose"] {
   --primary: oklch(0.645 0.246 16.439);

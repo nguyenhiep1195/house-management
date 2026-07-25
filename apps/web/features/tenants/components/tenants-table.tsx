@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal, Plus, Users } from "lucide-react";
+import { Pencil, Plus, Trash2, Users } from "lucide-react";
 
 import type { RoomOption, Tenant } from "@/features/tenants/types";
 import { formatDate } from "@/lib/format";
@@ -9,13 +9,6 @@ import { DeleteTenantDialog } from "./delete-tenant-dialog";
 import { TenantFormDialog } from "./tenant-form-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -97,31 +90,26 @@ export function TenantsTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Thao tác với ${tenant.fullName}`}
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onSelect={() => setEditingTenant(tenant)}
-                        >
-                          Sửa
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onSelect={() => setDeletingTenant(tenant)}
-                        >
-                          Xoá
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Sửa ${tenant.fullName}`}
+                        title="Sửa"
+                        onClick={() => setEditingTenant(tenant)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Xoá ${tenant.fullName}`}
+                        title="Xoá"
+                        onClick={() => setDeletingTenant(tenant)}
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

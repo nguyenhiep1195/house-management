@@ -19,6 +19,14 @@ export class CreateContractDto {
   @Min(0)
   deposit?: number;
 
+  @IsInt()
+  @Min(0)
+  initialElectricityReading!: number;
+
+  @IsInt()
+  @Min(0)
+  initialWaterReading!: number;
+
   @IsDateString({}, { message: 'Ngày bắt đầu không hợp lệ' })
   startDate!: string;
 

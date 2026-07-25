@@ -20,6 +20,16 @@ export class UpdateContractDto {
   deposit?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  initialElectricityReading?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  initialWaterReading?: number;
+
+  @IsOptional()
   @IsDateString({}, { message: 'Ngày bắt đầu không hợp lệ' })
   startDate?: string;
 

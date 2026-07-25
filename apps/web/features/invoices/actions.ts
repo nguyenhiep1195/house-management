@@ -46,6 +46,7 @@ export async function generateInvoices(
   InvoiceActionState & {
     created?: number;
     skipped?: number;
+    skippedRooms?: { roomId: number; roomName: string }[];
     missingReadings?: { roomId: number; roomName: string }[];
   }
 > {
@@ -54,6 +55,7 @@ export async function generateInvoices(
   const res = await apiFetch<{
     created: number;
     skipped: number;
+    skippedRooms: { roomId: number; roomName: string }[];
     missingReadings: { roomId: number; roomName: string }[];
   }>("/invoices/generate", {
     method: "POST",

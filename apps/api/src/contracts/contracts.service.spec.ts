@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
   BadRequestException,
   ConflictException,
@@ -56,6 +57,8 @@ describe('ContractsService', () => {
       service.create({
         roomId: 99,
         price: 1,
+        initialElectricityReading: 0,
+        initialWaterReading: 0,
         startDate: '2026-07-01',
         endDate: '2027-07-01',
       }),
@@ -68,6 +71,8 @@ describe('ContractsService', () => {
       service.create({
         roomId: 1,
         price: 1,
+        initialElectricityReading: 0,
+        initialWaterReading: 0,
         startDate: '2027-07-01',
         endDate: '2026-07-01',
       }),
@@ -81,6 +86,8 @@ describe('ContractsService', () => {
       service.create({
         roomId: 1,
         price: 1,
+        initialElectricityReading: 0,
+        initialWaterReading: 0,
         startDate: '2026-07-01',
         endDate: '2027-07-01',
       }),
@@ -95,12 +102,48 @@ describe('ContractsService', () => {
       roomId: 1,
       price: 3200000,
       deposit: 3000000,
+      initialElectricityReading: 500,
+      initialWaterReading: 50,
       startDate: '2026-07-01',
       endDate: '2027-07-01',
     });
     expect(tx.room.update).toHaveBeenCalledWith({
       where: { id: 1 },
-      data: { status: 'OCCUPIED', price: 3200000 },
+      data: {
+        status: 'OCCUPIED',
+        price: 3200000,
+        electricityReading: 500,
+        waterReading: 50,
+      },
+    });
+  });
+
+  it('stores contract initial readings and seeds room current readings', async () => {
+    prisma.room.findUnique.mockResolvedValue(room);
+    prisma.contract.findFirst.mockResolvedValue(null);
+    tx.contract.create.mockResolvedValue(contract);
+    await service.create({
+      roomId: 1,
+      price: 3200000,
+      deposit: 3000000,
+      initialElectricityReading: 500,
+      initialWaterReading: 50,
+      startDate: '2026-07-01',
+      endDate: '2027-07-01',
+    });
+    const createArgs = tx.contract.create.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(createArgs.data.initialElectricityReading).toBe(500);
+    expect(createArgs.data.initialWaterReading).toBe(50);
+    expect(tx.room.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: {
+        status: 'OCCUPIED',
+        price: 3200000,
+        electricityReading: 500,
+        waterReading: 50,
+      },
     });
   });
 

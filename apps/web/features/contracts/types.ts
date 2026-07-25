@@ -15,6 +15,8 @@ export interface Contract {
   room: { id: number; name: string };
   price: number;
   deposit: number;
+  initialElectricityReading: number;
+  initialWaterReading: number;
   startDate: string;
   endDate: string;
   status: ContractStatus;

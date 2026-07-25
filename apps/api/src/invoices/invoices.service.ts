@@ -76,21 +76,52 @@ export class InvoicesService {
 
     const setting = await this.settingsService.get();
 
-    // previous billing period: latest invoice strictly before (year, month)
+    // governing contract for this billing period: the room's latest contract
+    // that started on or before the end of the billing month
+    const periodEnd = new Date(dto.year, dto.month, 0, 23, 59, 59);
+    const contract = await this.prisma.contract.findFirst({
+      where: { roomId: dto.roomId, startDate: { lte: periodEnd } },
+      orderBy: { startDate: 'desc' },
+    });
+    const contractStartYear = contract?.startDate.getFullYear();
+    const contractStartMonth = contract
+      ? contract.startDate.getMonth() + 1
+      : undefined;
+
+    // previous billing period: latest invoice strictly before (year, month),
+    // and — when a governing contract exists — no earlier than its start month,
+    // so a new contract resets the baseline.
+    const beforePeriod = {
+      OR: [
+        { year: { lt: dto.year } },
+        { year: dto.year, month: { lt: dto.month } },
+      ],
+    };
+    const withinContract =
+      contractStartYear !== undefined && contractStartMonth !== undefined
+        ? {
+            OR: [
+              { year: { gt: contractStartYear } },
+              { year: contractStartYear, month: { gte: contractStartMonth } },
+            ],
+          }
+        : undefined;
     const previous = await this.prisma.invoice.findFirst({
       where: {
         roomId: dto.roomId,
-        OR: [
-          { year: { lt: dto.year } },
-          { year: dto.year, month: { lt: dto.month } },
-        ],
+        AND: withinContract ? [beforePeriod, withinContract] : [beforePeriod],
       },
       orderBy: [{ year: 'desc' }, { month: 'desc' }],
     });
 
     const electricityPrev =
-      previous?.electricityCurrent ?? room.initialElectricityReading;
-    const waterPrev = previous?.waterCurrent ?? room.initialWaterReading;
+      previous?.electricityCurrent ??
+      contract?.initialElectricityReading ??
+      room.initialElectricityReading;
+    const waterPrev =
+      previous?.waterCurrent ??
+      contract?.initialWaterReading ??
+      room.initialWaterReading;
     const electricityCurrent = reading.electricityReading;
     const waterCurrent = reading.waterReading;
 
@@ -157,13 +188,14 @@ export class InvoicesService {
   ): Promise<{
     created: number;
     skipped: number;
+    skippedRooms: { roomId: number; roomName: string }[];
     missingReadings: { roomId: number; roomName: string }[];
   }> {
     const rooms = await this.prisma.room.findMany({
       where: { status: 'OCCUPIED' },
     });
     let created = 0;
-    let skipped = 0;
+    const skippedRooms: { roomId: number; roomName: string }[] = [];
     const missingReadings: { roomId: number; roomName: string }[] = [];
     for (const room of rooms) {
       try {
@@ -171,7 +203,7 @@ export class InvoicesService {
         created += 1;
       } catch (e) {
         if (e instanceof ConflictException) {
-          skipped += 1;
+          skippedRooms.push({ roomId: room.id, roomName: room.name });
           continue;
         }
         if (e instanceof BadRequestException) {
@@ -181,7 +213,12 @@ export class InvoicesService {
         throw e;
       }
     }
-    return { created, skipped, missingReadings };
+    return {
+      created,
+      skipped: skippedRooms.length,
+      skippedRooms,
+      missingReadings,
+    };
   }
 
   async pay(id: number, dto: PayInvoiceDto) {
