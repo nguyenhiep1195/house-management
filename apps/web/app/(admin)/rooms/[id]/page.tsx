@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/shared/page-header";
@@ -47,6 +48,7 @@ export default async function RoomDetailPage({
   if (!res.data) notFound();
   const room = res.data;
   const status = ROOM_STATUS_LABEL[room.status];
+  const activeContract = room.contracts.find((c) => c.status === "ACTIVE");
 
   return (
     <div className="flex flex-col gap-6">
@@ -64,10 +66,27 @@ export default async function RoomDetailPage({
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <p className="text-sm text-muted-foreground">Giá phòng</p>
-            <p className="font-medium tabular-nums">
-              {formatCurrency(room.price)}/tháng
-            </p>
+            <p className="text-sm text-muted-foreground">Giá thuê</p>
+            {activeContract ? (
+              <p className="font-medium tabular-nums">
+                <Link
+                  href={`/contracts?roomId=${room.id}`}
+                  className="hover:underline"
+                  title="Sửa giá thuê trong hợp đồng"
+                >
+                  {formatCurrency(activeContract.price)}/tháng
+                </Link>
+              </p>
+            ) : (
+              <p className="font-medium">
+                <Link
+                  href={`/contracts?roomId=${room.id}`}
+                  className="text-muted-foreground hover:underline"
+                >
+                  Chưa có hợp đồng
+                </Link>
+              </p>
+            )}
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Số người</p>

@@ -43,6 +43,8 @@ interface ContractFormDialogProps {
   rooms: ContractRoomOption[];
   /** When set, the dialog edits this contract; otherwise it creates a new one. */
   contract?: Contract;
+  /** Preselect this room on create (e.g. deep-linked from the rooms page). */
+  defaultRoomId?: number;
 }
 
 export function ContractFormDialog({
@@ -50,15 +52,18 @@ export function ContractFormDialog({
   onOpenChange,
   rooms,
   contract,
+  defaultRoomId,
 }: ContractFormDialogProps) {
   const isEdit = !!contract;
   const action = isEdit ? updateContract : createContract;
   const [state, formAction, pending] = useActionState(action, initialState);
   const [roomId, setRoomId] = React.useState<string>(
-    contract?.roomId.toString() ?? "",
+    contract?.roomId.toString() ?? defaultRoomId?.toString() ?? "",
   );
   const [price, setPrice] = React.useState<string>(
-    contract?.price.toString() ?? "",
+    contract?.price.toString() ??
+      rooms.find((r) => r.id === defaultRoomId)?.price.toString() ??
+      "",
   );
   const [status, setStatus] = React.useState<ContractStatus>(
     contract?.status ?? "ACTIVE",

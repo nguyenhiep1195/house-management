@@ -71,7 +71,7 @@ export function RoomsTable({ rooms }: { rooms: Room[] }) {
             <TableHeader>
               <TableRow>
                 <TableHead>Tên phòng</TableHead>
-                <TableHead>Giá phòng</TableHead>
+                <TableHead>Giá thuê</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Số người</TableHead>
                 <TableHead>Số xe máy</TableHead>
@@ -94,7 +94,22 @@ export function RoomsTable({ rooms }: { rooms: Room[] }) {
                       </Link>
                     </TableCell>
                     <TableCell className="tabular-nums">
-                      {formatCurrency(room.price)}
+                      {room.status === "OCCUPIED" ? (
+                        <Link
+                          href={`/contracts?roomId=${room.id}`}
+                          className="hover:underline"
+                          title="Sửa giá thuê trong hợp đồng"
+                        >
+                          {formatCurrency(room.price)}
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/contracts?roomId=${room.id}`}
+                          className="text-muted-foreground hover:underline"
+                        >
+                          Chưa có hợp đồng
+                        </Link>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={status.variant}>{status.label}</Badge>

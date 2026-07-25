@@ -10,7 +10,11 @@ import { apiFetch } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Hợp đồng" };
 
-export default async function ContractsPage() {
+export default async function ContractsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ roomId?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/api/session/clear");
 
@@ -24,13 +28,24 @@ export default async function ContractsPage() {
     ({ id, name, price }) => ({ id, name, price }),
   );
 
+  const { roomId } = await searchParams;
+  const initialRoomId = roomId ? Number(roomId) : undefined;
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Hợp đồng"
         description="Quản lý hợp đồng thuê phòng và thời hạn"
       />
-      <ContractsTable contracts={contractsRes.data ?? []} rooms={rooms} />
+      <ContractsTable
+        contracts={contractsRes.data ?? []}
+        rooms={rooms}
+        initialRoomId={
+          initialRoomId && !Number.isNaN(initialRoomId)
+            ? initialRoomId
+            : undefined
+        }
+      />
     </div>
   );
 }

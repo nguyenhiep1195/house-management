@@ -49,7 +49,7 @@ export const THEME_FONT_SIZES: {
 }[] = [
   { value: "sm", label: "Nhỏ", px: 14 },
   { value: "md", label: "Vừa", px: 16 },
-  { value: "lg", label: "Lớn", px: 18 },
+  { value: "lg", label: "Lớn", px: 20 },
 ];
 
 export function resolveMode(mode: ThemeMode): "light" | "dark" {

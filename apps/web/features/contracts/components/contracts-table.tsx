@@ -33,13 +33,28 @@ import {
 export function ContractsTable({
   contracts,
   rooms,
+  initialRoomId,
 }: {
   contracts: Contract[];
   rooms: ContractRoomOption[];
+  /** When deep-linked from a room, open that room's active contract for editing
+   * (or a preselected create dialog if the room has no active contract). */
+  initialRoomId?: number;
 }) {
-  const [createOpen, setCreateOpen] = React.useState(false);
+  // Resolve the deep-link target (from a room's "giá thuê" link) at first render:
+  // edit the room's active contract if it has one, otherwise open a preselected
+  // create dialog.
+  const initialActive =
+    initialRoomId != null
+      ? (contracts.find(
+          (c) => c.roomId === initialRoomId && c.status === "ACTIVE",
+        ) ?? null)
+      : null;
+  const [createOpen, setCreateOpen] = React.useState(
+    initialRoomId != null && !initialActive,
+  );
   const [editingContract, setEditingContract] =
-    React.useState<Contract | null>(null);
+    React.useState<Contract | null>(initialActive);
   const [deletingContract, setDeletingContract] =
     React.useState<Contract | null>(null);
 
@@ -145,10 +160,11 @@ export function ContractsTable({
       )}
 
       <ContractFormDialog
-        key="create"
+        key={`create-${initialRoomId ?? "none"}`}
         open={createOpen}
         onOpenChange={setCreateOpen}
         rooms={rooms}
+        defaultRoomId={initialRoomId}
       />
       <ContractFormDialog
         key={editingContract?.id ?? "edit-none"}

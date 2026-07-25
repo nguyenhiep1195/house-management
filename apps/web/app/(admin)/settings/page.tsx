@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 import { getCurrentUser, getSessionToken } from "@/features/auth/session";
-import { FeeSettingsForm } from "@/features/settings/components/fee-settings-form";
-import type { FeeSetting } from "@/features/settings/types";
+import { FeeSettingsSection } from "@/features/settings/components/fee-settings-section";
+import type { FeeSetting, FeeSettingHistory } from "@/features/settings/types";
 import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,9 +17,14 @@ export default async function SettingsPage() {
   const user = await getCurrentUser();
   const token = await getSessionToken();
   let feeSetting: FeeSetting | null = null;
+  let feeHistory: FeeSettingHistory[] = [];
   if (user?.role === "ADMIN" && token) {
-    const res = await apiFetch<FeeSetting>("/settings", { token });
-    feeSetting = res.data;
+    const [settingRes, historyRes] = await Promise.all([
+      apiFetch<FeeSetting>("/settings", { token }),
+      apiFetch<FeeSettingHistory[]>("/settings/history", { token }),
+    ]);
+    feeSetting = settingRes.data;
+    feeHistory = historyRes.data ?? [];
   }
 
   return (
@@ -40,7 +45,9 @@ export default async function SettingsPage() {
           <ProfileSettings />
         </TabsContent>
       </Tabs>
-      {feeSetting ? <FeeSettingsForm setting={feeSetting} /> : null}
+      {feeSetting ? (
+        <FeeSettingsSection setting={feeSetting} history={feeHistory} />
+      ) : null}
     </>
   );
 }

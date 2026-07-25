@@ -88,20 +88,6 @@ export function RoomFormDialog({ open, onOpenChange, room }: RoomFormDialogProps
               <Input id="room-name" name="name" defaultValue={room?.name} required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="room-price">
-                Giá phòng (đ/tháng) <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="room-price"
-                name="price"
-                type="number"
-                min={0}
-                step={1000}
-                defaultValue={room?.price}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
               <Label htmlFor="room-occupantCount">Số người</Label>
               <Input
                 id="room-occupantCount"
@@ -186,6 +172,10 @@ export function RoomFormDialog({ open, onOpenChange, room }: RoomFormDialogProps
             />
             <Label htmlFor="room-internetEnabled">Sử dụng internet</Label>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Giá thuê được quản lý theo hợp đồng đang hiệu lực của phòng, không đặt
+            trực tiếp tại đây.
+          </p>
           {state.error ? (
             <p role="alert" className="text-sm text-destructive">
               {state.error}

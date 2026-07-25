@@ -28,7 +28,7 @@ export async function createRoom(
     method: "POST",
     body: JSON.stringify({
       name: String(formData.get("name") ?? ""),
-      price: Number(formData.get("price") ?? 0),
+      // Rent price is set via the room's contract, not here.
       occupantCount: Number(formData.get("occupantCount") ?? 0),
       motorbikeCount: Number(formData.get("motorbikeCount") ?? 0),
       internetEnabled: formData.get("internetEnabled") === "on",
@@ -52,7 +52,7 @@ export async function updateRoom(
     method: "PATCH",
     body: JSON.stringify({
       name: String(formData.get("name") ?? ""),
-      price: Number(formData.get("price") ?? 0),
+      // Rent price is set via the room's contract, not here.
       status: String(formData.get("status") ?? "AVAILABLE"),
       occupantCount: Number(formData.get("occupantCount") ?? 0),
       motorbikeCount: Number(formData.get("motorbikeCount") ?? 0),
