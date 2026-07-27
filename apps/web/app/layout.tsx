@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -24,6 +24,21 @@ export const metadata: Metadata = {
     template: "%s | House Management",
   },
   description: "Hệ thống quản trị nhà ở",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "House Mgmt",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({
