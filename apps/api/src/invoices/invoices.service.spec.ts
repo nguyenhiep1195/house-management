@@ -407,6 +407,96 @@ describe('InvoicesService', () => {
     );
   });
 
+  describe('refreshForMonth', () => {
+    // Matches what computeInvoiceData produces for `room` + `setting` with
+    // reading 250/22 and no previous invoice/contract.
+    const freshInvoice = {
+      id: 7,
+      roomId: 1,
+      month: 7,
+      year: 2026,
+      status: 'UNPAID',
+      roomPrice: 3000000,
+      electricityPrev: 100,
+      electricityCurrent: 250,
+      electricityUnitPrice: 3500,
+      waterPrev: 10,
+      waterCurrent: 22,
+      waterUnitPrice: 15000,
+      internetFee: 100000,
+      elevatorFee: 60000,
+      cleaningFee: 40000,
+      motorbikeFee: 100000,
+      otherFee: 50000,
+      occupantCount: 2,
+      motorbikeCount: 3,
+      totalAmount: 4055000,
+      room,
+    };
+
+    it('only targets UNPAID invoices of the requested period', async () => {
+      prisma.invoice.findMany.mockResolvedValue([]);
+      await service.refreshForMonth(7, 2026);
+      expect(prisma.invoice.findMany).toHaveBeenCalledWith({
+        where: { year: 2026, month: 7, status: 'UNPAID' },
+        include: { room: true },
+      });
+    });
+
+    it('updates an invoice whose snapshot diverged from current settings', async () => {
+      // Invoice was created with an older, cheaper electricity price.
+      prisma.invoice.findMany.mockResolvedValue([
+        { ...freshInvoice, electricityUnitPrice: 3000, totalAmount: 3980000 },
+      ]);
+      prisma.invoice.findFirst.mockResolvedValue(null);
+      prisma.meterReading.findUnique.mockResolvedValue({
+        electricityReading: 250,
+        waterReading: 22,
+      });
+      prisma.invoice.update.mockResolvedValue({});
+
+      const result = await service.refreshForMonth(7, 2026);
+      expect(result).toEqual({
+        updated: 1,
+        unchanged: 0,
+        missingReadings: [],
+      });
+      const { data } = prisma.invoice.update.mock.calls[0][0];
+      expect(data.electricityUnitPrice).toBe(3500);
+      expect(data.totalAmount).toBe(4055000);
+    });
+
+    it('leaves an already up-to-date invoice untouched', async () => {
+      prisma.invoice.findMany.mockResolvedValue([freshInvoice]);
+      prisma.invoice.findFirst.mockResolvedValue(null);
+      prisma.meterReading.findUnique.mockResolvedValue({
+        electricityReading: 250,
+        waterReading: 22,
+      });
+
+      const result = await service.refreshForMonth(7, 2026);
+      expect(result).toEqual({
+        updated: 0,
+        unchanged: 1,
+        missingReadings: [],
+      });
+      expect(prisma.invoice.update).not.toHaveBeenCalled();
+    });
+
+    it('collects rooms whose meter reading is missing', async () => {
+      prisma.invoice.findMany.mockResolvedValue([freshInvoice]);
+      prisma.meterReading.findUnique.mockResolvedValue(null);
+
+      const result = await service.refreshForMonth(7, 2026);
+      expect(result).toEqual({
+        updated: 0,
+        unchanged: 0,
+        missingReadings: [{ roomId: 1, roomName: 'P101' }],
+      });
+      expect(prisma.invoice.update).not.toHaveBeenCalled();
+    });
+  });
+
   it('update recomputes total and rejects paid invoices', async () => {
     prisma.invoice.findUnique.mockResolvedValueOnce({ id: 5, status: 'PAID' });
     await expect(service.update(5, { roomPrice: 1 })).rejects.toThrow(

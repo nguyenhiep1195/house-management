@@ -2,15 +2,20 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Gauge, Loader2, Zap } from "lucide-react";
+import { Gauge, Loader2, RefreshCw, Zap } from "lucide-react";
 import { toast } from "sonner";
 
-import { generateInvoices } from "@/features/invoices/actions";
+import { generateInvoices, refreshInvoices } from "@/features/invoices/actions";
 import { BulkReadingsDialog } from "@/features/rooms/components/bulk-readings-dialog";
 import type { Room } from "@/features/rooms/types";
 import { MonthPicker } from "./month-picker";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function InvoicesToolbar({
   month,
@@ -23,6 +28,7 @@ export function InvoicesToolbar({
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
+  const [refreshing, startRefresh] = React.useTransition();
   const [readingsOpen, setReadingsOpen] = React.useState(false);
   const [readingsKey, setReadingsKey] = React.useState(0);
 
@@ -68,6 +74,30 @@ export function InvoicesToolbar({
     });
   }
 
+  function handleRefresh() {
+    startRefresh(async () => {
+      const result = await refreshInvoices(month, year);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      if ((result.updated ?? 0) > 0) {
+        toast.success(`Đã cập nhật ${result.updated} hoá đơn`);
+      } else {
+        toast.info("Không có hoá đơn nào cần cập nhật");
+      }
+      const missing = result.missingReadings ?? [];
+      if (missing.length > 0) {
+        toast.warning(
+          `Chưa nhập chỉ số cho ${missing.length} phòng: ${missing
+            .map((m) => m.roomName)
+            .join(", ")}. Vui lòng cập nhật chỉ số điện nước.`,
+        );
+      }
+      router.refresh();
+    });
+  }
+
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="grid gap-1.5">
@@ -91,6 +121,24 @@ export function InvoicesToolbar({
           )}
           Tạo hoá đơn tháng {month}/{year}
         </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Cập nhật lại các thông tin mới nhất"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Cập nhật lại các thông tin mới nhất</TooltipContent>
+        </Tooltip>
       </div>
       <BulkReadingsDialog
         key={readingsKey}

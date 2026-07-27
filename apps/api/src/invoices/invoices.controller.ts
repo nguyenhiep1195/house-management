@@ -42,6 +42,12 @@ export class InvoicesController {
     return this.invoicesService.generateForMonth(dto.month, dto.year);
   }
 
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  refresh(@Body() dto: GenerateInvoicesDto) {
+    return this.invoicesService.refreshForMonth(dto.month, dto.year);
+  }
+
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateInvoiceDto) {
     return this.invoicesService.update(id, dto);

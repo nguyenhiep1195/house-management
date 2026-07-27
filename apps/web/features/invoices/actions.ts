@@ -73,6 +73,32 @@ export async function generateInvoices(
   return { error: null, success: true, ...res.data };
 }
 
+export async function refreshInvoices(
+  month: number,
+  year: number,
+): Promise<
+  InvoiceActionState & {
+    updated?: number;
+    unchanged?: number;
+    missingReadings?: { roomId: number; roomName: string }[];
+  }
+> {
+  const token = await getSessionToken();
+  if (!token) return { error: "Phiên đăng nhập đã hết hạn" };
+  const res = await apiFetch<{
+    updated: number;
+    unchanged: number;
+    missingReadings: { roomId: number; roomName: string }[];
+  }>("/invoices/refresh", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ month, year }),
+  });
+  if (!res.ok) return { error: res.error };
+  revalidateInvoicePages();
+  return { error: null, success: true, ...res.data };
+}
+
 export async function payInvoice(
   id: number,
   paymentMethod: PaymentMethod,

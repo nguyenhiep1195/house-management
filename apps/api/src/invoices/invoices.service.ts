@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Room } from '../generated/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -59,31 +60,66 @@ export class InvoicesService {
     });
     if (existing) throw new ConflictException(INVOICE_EXISTS);
 
+    const data = await this.computeInvoiceData(
+      room,
+      dto.month,
+      dto.year,
+      dto.feeSettingId,
+    );
+
+    try {
+      return await this.prisma.invoice.create({
+        data: {
+          roomId: dto.roomId,
+          month: dto.month,
+          year: dto.year,
+          ...data,
+        },
+        include: INVOICE_INCLUDE,
+      });
+    } catch (e) {
+      if (
+        typeof e === 'object' &&
+        e !== null &&
+        'code' in e &&
+        (e as { code?: string }).code === 'P2002'
+      ) {
+        throw new ConflictException(INVOICE_EXISTS);
+      }
+      throw e;
+    }
+  }
+
+  // Single source of truth for invoice amounts: resolves the room's current
+  // fee type, meter reading, and prev-reading baseline (previous invoice →
+  // contract → room initials) for the given billing period.
+  private async computeInvoiceData(
+    room: Room,
+    month: number,
+    year: number,
+    feeSettingId?: number,
+  ) {
     const reading = await this.prisma.meterReading.findUnique({
       where: {
-        roomId_year_month: {
-          roomId: dto.roomId,
-          year: dto.year,
-          month: dto.month,
-        },
+        roomId_year_month: { roomId: room.id, year, month },
       },
     });
     if (!reading) {
       throw new BadRequestException(
-        `Phòng ${room.name} chưa nhập chỉ số điện nước tháng ${dto.month}/${dto.year}`,
+        `Phòng ${room.name} chưa nhập chỉ số điện nước tháng ${month}/${year}`,
       );
     }
 
     // Resolve fee type: explicit override → room's assigned type → default.
     const setting = await this.settingsService.resolve(
-      dto.feeSettingId ?? room.feeSettingId,
+      feeSettingId ?? room.feeSettingId,
     );
 
     // governing contract for this billing period: the room's latest contract
     // that started on or before the end of the billing month
-    const periodEnd = new Date(dto.year, dto.month, 0, 23, 59, 59);
+    const periodEnd = new Date(year, month, 0, 23, 59, 59);
     const contract = await this.prisma.contract.findFirst({
-      where: { roomId: dto.roomId, startDate: { lte: periodEnd } },
+      where: { roomId: room.id, startDate: { lte: periodEnd } },
       orderBy: { startDate: 'desc' },
     });
     const contractStartYear = contract?.startDate.getFullYear();
@@ -95,10 +131,7 @@ export class InvoicesService {
     // and — when a governing contract exists — no earlier than its start month,
     // so a new contract resets the baseline.
     const beforePeriod = {
-      OR: [
-        { year: { lt: dto.year } },
-        { year: dto.year, month: { lt: dto.month } },
-      ],
+      OR: [{ year: { lt: year } }, { year, month: { lt: month } }],
     };
     const withinContract =
       contractStartYear !== undefined && contractStartMonth !== undefined
@@ -111,7 +144,7 @@ export class InvoicesService {
         : undefined;
     const previous = await this.prisma.invoice.findFirst({
       where: {
-        roomId: dto.roomId,
+        roomId: room.id,
         AND: withinContract ? [beforePeriod, withinContract] : [beforePeriod],
       },
       orderBy: [{ year: 'desc' }, { month: 'desc' }],
@@ -148,41 +181,23 @@ export class InvoicesService {
       motorbikeFee +
       setting.otherFee;
 
-    try {
-      return await this.prisma.invoice.create({
-        data: {
-          roomId: dto.roomId,
-          month: dto.month,
-          year: dto.year,
-          roomPrice: room.price,
-          electricityPrev,
-          electricityCurrent,
-          electricityUnitPrice: setting.electricityUnitPrice,
-          waterPrev,
-          waterCurrent,
-          waterUnitPrice: setting.waterUnitPrice,
-          internetFee,
-          elevatorFee,
-          cleaningFee,
-          motorbikeFee,
-          otherFee: setting.otherFee,
-          occupantCount: room.occupantCount,
-          motorbikeCount: room.motorbikeCount,
-          totalAmount,
-        },
-        include: INVOICE_INCLUDE,
-      });
-    } catch (e) {
-      if (
-        typeof e === 'object' &&
-        e !== null &&
-        'code' in e &&
-        (e as { code?: string }).code === 'P2002'
-      ) {
-        throw new ConflictException(INVOICE_EXISTS);
-      }
-      throw e;
-    }
+    return {
+      roomPrice: room.price,
+      electricityPrev,
+      electricityCurrent,
+      electricityUnitPrice: setting.electricityUnitPrice,
+      waterPrev,
+      waterCurrent,
+      waterUnitPrice: setting.waterUnitPrice,
+      internetFee,
+      elevatorFee,
+      cleaningFee,
+      motorbikeFee,
+      otherFee: setting.otherFee,
+      occupantCount: room.occupantCount,
+      motorbikeCount: room.motorbikeCount,
+      totalAmount,
+    };
   }
 
   async generateForMonth(
@@ -222,6 +237,55 @@ export class InvoicesService {
       skippedRooms,
       missingReadings,
     };
+  }
+
+  // Rebuilds every UNPAID invoice of the period from the current data (room
+  // price, fee setting, meter readings, occupant/motorbike counts). PAID
+  // invoices are never touched. Note: this overwrites manual edits made via
+  // the invoice edit dialog.
+  async refreshForMonth(
+    month: number,
+    year: number,
+  ): Promise<{
+    updated: number;
+    unchanged: number;
+    missingReadings: { roomId: number; roomName: string }[];
+  }> {
+    const invoices = await this.prisma.invoice.findMany({
+      where: { year, month, status: 'UNPAID' },
+      include: { room: true },
+    });
+    let updated = 0;
+    let unchanged = 0;
+    const missingReadings: { roomId: number; roomName: string }[] = [];
+
+    for (const invoice of invoices) {
+      let data: Awaited<ReturnType<InvoicesService['computeInvoiceData']>>;
+      try {
+        data = await this.computeInvoiceData(invoice.room, month, year);
+      } catch (e) {
+        if (e instanceof BadRequestException) {
+          missingReadings.push({
+            roomId: invoice.roomId,
+            roomName: invoice.room.name,
+          });
+          continue;
+        }
+        throw e;
+      }
+
+      const changed = (Object.keys(data) as (keyof typeof data)[]).some(
+        (key) => invoice[key] !== data[key],
+      );
+      if (!changed) {
+        unchanged += 1;
+        continue;
+      }
+      await this.prisma.invoice.update({ where: { id: invoice.id }, data });
+      updated += 1;
+    }
+
+    return { updated, unchanged, missingReadings };
   }
 
   async pay(id: number, dto: PayInvoiceDto) {

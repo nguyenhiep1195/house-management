@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { getCurrentUser, getSessionToken } from "@/features/auth/session";
-import { FeeSettingsSection } from "@/features/settings/components/fee-settings-section";
 import { SettingsTabs } from "@/features/settings/components/settings-tabs";
 import type { FeeSetting, FeeSettingHistory } from "@/features/settings/types";
 import { apiFetch } from "@/lib/api";
@@ -40,16 +39,12 @@ export default async function SettingsPage() {
         description="Quản lý giao diện và thông tin tài khoản"
       />
       <Suspense fallback={null}>
-        <SettingsTabs user={user} />
+        <SettingsTabs
+          user={user}
+          feeSettings={feeSettings}
+          historyByType={historyByType}
+        />
       </Suspense>
-      {feeSettings.length > 0 ? (
-        <Suspense fallback={null}>
-          <FeeSettingsSection
-            settings={feeSettings}
-            historyByType={historyByType}
-          />
-        </Suspense>
-      ) : null}
     </>
   );
 }
