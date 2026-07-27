@@ -3,3 +3,6 @@
 
 # Agent-related scratch
 .agents/
+
+# Production secrets (never commit)
+deploy/.env.prod
