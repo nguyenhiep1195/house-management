@@ -9,11 +9,13 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthUser } from '../auth/types/auth-user';
 import { BulkUpdateReadingsDto } from './dto/bulk-update-readings.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
+import { PeriodQueryDto } from './dto/period-query.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { RoomsService } from './rooms.service';
 
@@ -39,6 +41,13 @@ export class RoomsController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.roomsService.bulkUpdateReadings(dto, user);
+  }
+
+  // MUST stay above ':id' routes — otherwise Nest matches 'meter-readings'
+  // as an :id and ParseIntPipe rejects it.
+  @Get('meter-readings')
+  findPeriodReadings(@Query() query: PeriodQueryDto) {
+    return this.roomsService.findPeriodReadings(query.year, query.month);
   }
 
   @Get(':id/meter-readings/history')

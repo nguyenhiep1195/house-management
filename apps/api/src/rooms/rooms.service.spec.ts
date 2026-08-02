@@ -302,3 +302,88 @@ describe('RoomsService.bulkUpdateReadings', () => {
     expect(prisma.meterReading.upsert).not.toHaveBeenCalled();
   });
 });
+
+describe('RoomsService.findPeriodReadings', () => {
+  let service: RoomsService;
+  const prisma = {
+    room: { findMany: jest.fn() },
+    meterReading: { findFirst: jest.fn(), findUnique: jest.fn() },
+    invoice: { findFirst: jest.fn() },
+  };
+  const invoices = { resyncFromPeriod: jest.fn() };
+  const settings = { getDefault: jest.fn() };
+
+  const room = {
+    id: 1,
+    name: 'P101',
+    initialElectricityReading: 100,
+    initialWaterReading: 10,
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        RoomsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: InvoicesService, useValue: invoices },
+        { provide: SettingsService, useValue: settings },
+      ],
+    }).compile();
+    service = moduleRef.get(RoomsService);
+  });
+
+  it('falls back to the room initial readings when no earlier period exists', async () => {
+    prisma.room.findMany.mockResolvedValue([room]);
+    prisma.meterReading.findFirst.mockResolvedValue(null);
+    prisma.meterReading.findUnique.mockResolvedValue(null);
+    prisma.invoice.findFirst.mockResolvedValue(null);
+
+    const rows = await service.findPeriodReadings(2026, 7);
+
+    expect(rows).toEqual([
+      {
+        roomId: 1,
+        roomName: 'P101',
+        prevElectricity: 100,
+        prevWater: 10,
+        electricityReading: null,
+        waterReading: null,
+        recorded: false,
+        editable: true,
+        lockReason: null,
+      },
+    ]);
+  });
+
+  it('reports a recorded period with its values and the previous baseline', async () => {
+    prisma.room.findMany.mockResolvedValue([room]);
+    prisma.meterReading.findFirst.mockResolvedValue({
+      electricityReading: 240,
+      waterReading: 20,
+    });
+    prisma.meterReading.findUnique.mockResolvedValue({
+      electricityReading: 305,
+      waterReading: 26,
+    });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+
+    const [row] = await service.findPeriodReadings(2026, 7);
+
+    expect(row.prevElectricity).toBe(240);
+    expect(row.electricityReading).toBe(305);
+    expect(row.recorded).toBe(true);
+  });
+
+  it('marks a room locked when an invoice at or after the period is PAID', async () => {
+    prisma.room.findMany.mockResolvedValue([room]);
+    prisma.meterReading.findFirst.mockResolvedValue(null);
+    prisma.meterReading.findUnique.mockResolvedValue(null);
+    prisma.invoice.findFirst.mockResolvedValue({ year: 2026, month: 8 });
+
+    const [row] = await service.findPeriodReadings(2026, 7);
+
+    expect(row.editable).toBe(false);
+    expect(row.lockReason).toBe('Hoá đơn kỳ 8/2026 đã thanh toán');
+  });
+});

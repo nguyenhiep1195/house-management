@@ -11,6 +11,7 @@ import { SettingsService } from '../settings/settings.service';
 import { BulkUpdateReadingsDto } from './dto/bulk-update-readings.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
+import { RoomPeriodReading } from './types/room-period-reading';
 
 const ROOM_NAME_TAKEN = 'Tên phòng đã tồn tại';
 const ROOM_NOT_FOUND = 'Không tìm thấy phòng';
@@ -164,6 +165,48 @@ export class RoomsService {
       where: { roomId },
       orderBy: { changedAt: 'desc' },
     });
+  }
+
+  // Reading state for every occupied room in one period. Backs the bulk
+  // readings dialog: which rooms are still missing, what each one's baseline
+  // is, and which are locked by a settled invoice.
+  async findPeriodReadings(
+    year: number,
+    month: number,
+  ): Promise<RoomPeriodReading[]> {
+    const rooms = await this.prisma.room.findMany({
+      where: { status: 'OCCUPIED' },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        initialElectricityReading: true,
+        initialWaterReading: true,
+      },
+    });
+
+    return Promise.all(
+      rooms.map(async (room) => {
+        const prev = await this.resolvePrevReading(room.id, year, month, room);
+        const reading = await this.prisma.meterReading.findUnique({
+          where: { roomId_year_month: { roomId: room.id, year, month } },
+        });
+        const settled = await this.findSettledInvoiceFrom(room.id, year, month);
+        return {
+          roomId: room.id,
+          roomName: room.name,
+          prevElectricity: prev.electricity,
+          prevWater: prev.water,
+          electricityReading: reading?.electricityReading ?? null,
+          waterReading: reading?.waterReading ?? null,
+          recorded: reading !== null,
+          editable: settled === null,
+          lockReason: settled
+            ? `Hoá đơn kỳ ${settled.month}/${settled.year} đã thanh toán`
+            : null,
+        };
+      }),
+    );
   }
 
   async bulkUpdateReadings(
