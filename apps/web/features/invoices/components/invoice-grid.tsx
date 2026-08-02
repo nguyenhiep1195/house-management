@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Eye, Pencil, Receipt, Trash2 } from "lucide-react";
+import { Eye, Gauge, Pencil, Receipt, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { unpayInvoice } from "@/features/invoices/actions";
@@ -11,6 +11,7 @@ import { formatCurrency, formatMonth } from "@/lib/format";
 import { MeterReadingWarning } from "./meter-reading-warning";
 import { InvoiceDetailDialog } from "./invoice-detail-dialog";
 import { EditInvoiceDialog } from "./edit-invoice-dialog";
+import { InvoiceReadingDialog } from "./invoice-reading-dialog";
 import { PayInvoiceDialog } from "./pay-invoice-dialog";
 import { DeleteInvoiceDialog } from "./delete-invoice-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,9 @@ export function InvoiceGrid({ invoices }: { invoices: Invoice[] }) {
     null,
   );
   const [deletingInvoice, setDeletingInvoice] = React.useState<Invoice | null>(
+    null,
+  );
+  const [readingInvoice, setReadingInvoice] = React.useState<Invoice | null>(
     null,
   );
   const [, startTransition] = React.useTransition();
@@ -133,6 +137,20 @@ export function InvoiceGrid({ invoices }: { invoices: Invoice[] }) {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Cập nhật chỉ số điện nước"
+                    title={
+                      invoice.status === "PAID"
+                        ? "Hoá đơn đã thanh toán — không sửa được chỉ số"
+                        : "Cập nhật chỉ số điện nước"
+                    }
+                    disabled={invoice.status === "PAID"}
+                    onClick={() => setReadingInvoice(invoice)}
+                  >
+                    <Gauge className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     aria-label="Xem chi tiết"
                     title="Xem chi tiết"
                     onClick={() => setDetailInvoice(invoice)}
@@ -180,6 +198,10 @@ export function InvoiceGrid({ invoices }: { invoices: Invoice[] }) {
       <DeleteInvoiceDialog
         invoice={deletingInvoice}
         onOpenChange={(open) => !open && setDeletingInvoice(null)}
+      />
+      <InvoiceReadingDialog
+        invoice={readingInvoice}
+        onOpenChange={(open) => !open && setReadingInvoice(null)}
       />
     </>
   );

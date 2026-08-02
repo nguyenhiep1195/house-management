@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   Eye,
+  Gauge,
   Pencil,
   Receipt,
   Trash2,
@@ -21,6 +22,7 @@ import { formatCurrency, formatDate, formatMonth } from "@/lib/format";
 import { MeterReadingWarning } from "./meter-reading-warning";
 import { InvoiceDetailDialog } from "./invoice-detail-dialog";
 import { EditInvoiceDialog } from "./edit-invoice-dialog";
+import { InvoiceReadingDialog } from "./invoice-reading-dialog";
 import { PayInvoiceDialog } from "./pay-invoice-dialog";
 import { DeleteInvoiceDialog } from "./delete-invoice-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +53,9 @@ export function InvoiceList({
     null,
   );
   const [deletingInvoice, setDeletingInvoice] = React.useState<Invoice | null>(
+    null,
+  );
+  const [readingInvoice, setReadingInvoice] = React.useState<Invoice | null>(
     null,
   );
   const [expanded, setExpanded] = React.useState<number | null>(null);
@@ -186,6 +191,20 @@ export function InvoiceList({
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label="Cập nhật chỉ số điện nước"
+                          title={
+                            invoice.status === "PAID"
+                              ? "Hoá đơn đã thanh toán — không sửa được chỉ số"
+                              : "Cập nhật chỉ số điện nước"
+                          }
+                          disabled={invoice.status === "PAID"}
+                          onClick={() => setReadingInvoice(invoice)}
+                        >
+                          <Gauge className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           aria-label="Xem chi tiết"
                           title="Xem chi tiết"
                           onClick={() => setDetailInvoice(invoice)}
@@ -274,6 +293,10 @@ export function InvoiceList({
       <DeleteInvoiceDialog
         invoice={deletingInvoice}
         onOpenChange={(open) => !open && setDeletingInvoice(null)}
+      />
+      <InvoiceReadingDialog
+        invoice={readingInvoice}
+        onOpenChange={(open) => !open && setReadingInvoice(null)}
       />
     </>
   );
