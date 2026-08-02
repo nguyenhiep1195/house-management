@@ -118,7 +118,7 @@ describe('RoomsService.bulkUpdateReadings', () => {
       upsert: jest.fn(),
     },
     meterReadingHistory: { create: jest.fn() },
-    invoice: { findUnique: jest.fn() },
+    invoice: { findUnique: jest.fn(), findFirst: jest.fn() },
     feeSetting: { findUnique: jest.fn() },
     $transaction: jest.fn((ops: unknown) =>
       Array.isArray(ops)
@@ -140,6 +140,10 @@ describe('RoomsService.bulkUpdateReadings', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    // clearAllMocks does not drain mockResolvedValueOnce queues, and these two
+    // are chained per test — an unconsumed entry would leak into the next one.
+    prisma.meterReading.findFirst.mockReset();
+    prisma.invoice.findFirst.mockReset();
     const moduleRef = await Test.createTestingModule({
       providers: [
         RoomsService,
@@ -151,13 +155,13 @@ describe('RoomsService.bulkUpdateReadings', () => {
     service = moduleRef.get(RoomsService);
   });
 
-  it('rejects a reading lower than the previous month', async () => {
+  it('rejects a reading lower than the previous period', async () => {
     prisma.room.findMany.mockResolvedValue([room]);
-    // findFirst is called twice per item: first the newer-month check, then the
-    // previous-month lookup. No newer month -> latest ok; prev month reads 250.
+    // prev-period lookup reads 250; next-period lookup finds nothing.
     prisma.meterReading.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ electricityReading: 250, waterReading: 22 });
+      .mockResolvedValueOnce({ electricityReading: 250, waterReading: 22 })
+      .mockResolvedValueOnce(null);
+    prisma.invoice.findFirst.mockResolvedValue(null);
     await expect(
       service.bulkUpdateReadings({
         year: 2026,
@@ -167,25 +171,78 @@ describe('RoomsService.bulkUpdateReadings', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('rejects editing a month that is not the latest recorded month', async () => {
+  it('rejects a reading higher than the next recorded period', async () => {
     prisma.room.findMany.mockResolvedValue([room]);
-    // a NEWER month than the target already exists
-    prisma.meterReading.findFirst.mockResolvedValue({ year: 2026, month: 8 });
+    prisma.meterReading.findFirst
+      .mockResolvedValueOnce({ electricityReading: 100, waterReading: 10 })
+      .mockResolvedValueOnce({
+        year: 2026,
+        month: 8,
+        electricityReading: 280,
+        waterReading: 25,
+      });
+    prisma.invoice.findFirst.mockResolvedValue(null);
     await expect(
       service.bulkUpdateReadings({
         year: 2026,
         month: 7,
-        items: [{ roomId: 1, electricityReading: 300, waterReading: 30 }],
+        items: [{ roomId: 1, electricityReading: 300, waterReading: 20 }],
       }),
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('upserts the reading, writes history, and mirrors to the room', async () => {
+  it('accepts a back-dated edit within bounds and cascades', async () => {
     prisma.room.findMany.mockResolvedValue([room]);
-    // findFirst called twice per item: newer-month check (null) then prev-month
-    // check (null). invoice.findUnique returns null (no invoice this month).
+    prisma.meterReading.findFirst
+      .mockResolvedValueOnce({ electricityReading: 100, waterReading: 10 })
+      .mockResolvedValueOnce({
+        year: 2026,
+        month: 8,
+        electricityReading: 280,
+        waterReading: 25,
+      });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.meterReading.upsert.mockResolvedValue({});
+    prisma.meterReadingHistory.create.mockResolvedValue({});
+
+    await service.bulkUpdateReadings({
+      year: 2026,
+      month: 7,
+      items: [{ roomId: 1, electricityReading: 260, waterReading: 20 }],
+    });
+
+    expect(prisma.meterReading.upsert).toHaveBeenCalled();
+    expect(invoices.resyncFromPeriod).toHaveBeenCalledWith(1, 2026, 7);
+  });
+
+  it('leaves the room mirror alone for a back-dated edit', async () => {
+    prisma.room.findMany.mockResolvedValue([room]);
+    prisma.meterReading.findFirst
+      .mockResolvedValueOnce({ electricityReading: 100, waterReading: 10 })
+      .mockResolvedValueOnce({
+        year: 2026,
+        month: 8,
+        electricityReading: 280,
+        waterReading: 25,
+      });
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    prisma.meterReading.upsert.mockResolvedValue({});
+    prisma.meterReadingHistory.create.mockResolvedValue({});
+
+    await service.bulkUpdateReadings({
+      year: 2026,
+      month: 7,
+      items: [{ roomId: 1, electricityReading: 260, waterReading: 20 }],
+    });
+
+    expect(prisma.room.update).not.toHaveBeenCalled();
+  });
+
+  it('upserts the reading, writes history, and mirrors the newest period', async () => {
+    prisma.room.findMany.mockResolvedValue([room]);
+    // prev-period: none; next-period: none -> this IS the newest period.
     prisma.meterReading.findFirst.mockResolvedValue(null);
-    prisma.invoice.findUnique.mockResolvedValue(null);
+    prisma.invoice.findFirst.mockResolvedValue(null);
     prisma.meterReading.upsert.mockResolvedValue({});
     prisma.meterReadingHistory.create.mockResolvedValue({});
     prisma.room.update.mockResolvedValue({});
@@ -210,14 +267,10 @@ describe('RoomsService.bulkUpdateReadings', () => {
     );
   });
 
-  it('rejects with ConflictException and performs NO writes when the month invoice is PAID', async () => {
+  it('rejects with ConflictException and performs NO writes when this period is PAID', async () => {
     prisma.room.findMany.mockResolvedValue([room]);
-    // findFirst returns null twice (newer-month: null, prev-month: null) so
-    // validation reaches the PAID invoice check.
-    prisma.meterReading.findFirst
-      .mockResolvedValueOnce(null) // newer-month check
-      .mockResolvedValueOnce(null); // prev-month check
-    prisma.invoice.findUnique.mockResolvedValue({ status: 'PAID' });
+    prisma.meterReading.findFirst.mockResolvedValue(null);
+    prisma.invoice.findFirst.mockResolvedValue({ year: 2026, month: 7 });
 
     await expect(
       service.bulkUpdateReadings({
@@ -227,9 +280,25 @@ describe('RoomsService.bulkUpdateReadings', () => {
       }),
     ).rejects.toThrow(ConflictException);
 
-    // No writes must have happened.
     expect(prisma.meterReading.upsert).not.toHaveBeenCalled();
     expect(prisma.meterReadingHistory.create).not.toHaveBeenCalled();
     expect(prisma.room.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects with ConflictException when a LATER period is PAID', async () => {
+    prisma.room.findMany.mockResolvedValue([room]);
+    prisma.meterReading.findFirst.mockResolvedValue(null);
+    // The settled lookup covers this period and everything after it.
+    prisma.invoice.findFirst.mockResolvedValue({ year: 2026, month: 8 });
+
+    await expect(
+      service.bulkUpdateReadings({
+        year: 2026,
+        month: 7,
+        items: [{ roomId: 1, electricityReading: 300, waterReading: 30 }],
+      }),
+    ).rejects.toThrow(/8\/2026/);
+
+    expect(prisma.meterReading.upsert).not.toHaveBeenCalled();
   });
 });
