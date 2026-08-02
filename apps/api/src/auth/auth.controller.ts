@@ -13,7 +13,7 @@ import { Public } from './decorators/public.decorator';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { AuthUser } from './types/auth-user';
+import type { AuthUser } from './types/auth-user';
 
 const AUTH_THROTTLE = {
   default: { limit: Number(process.env.THROTTLE_AUTH_LIMIT ?? 5), ttl: 60_000 },

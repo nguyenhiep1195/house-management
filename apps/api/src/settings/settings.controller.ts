@@ -11,7 +11,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthUser } from '../auth/types/auth-user';
+import type { AuthUser } from '../auth/types/auth-user';
 import { CreateFeeSettingDto } from './dto/create-fee-setting.dto';
 import { UpdateFeeSettingDto } from './dto/update-fee-setting.dto';
 import { SettingsService } from './settings.service';

@@ -11,7 +11,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthUser } from '../auth/types/auth-user';
+import type { AuthUser } from '../auth/types/auth-user';
 import { BulkUpdateReadingsDto } from './dto/bulk-update-readings.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
