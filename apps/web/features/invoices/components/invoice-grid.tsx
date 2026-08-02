@@ -60,10 +60,10 @@ export function InvoiceGrid({ invoices }: { invoices: Invoice[] }) {
           const { electricityAmount, waterAmount, extraFees } =
             computeFeeLines(invoice);
           return (
-            <Card key={invoice.id} className="flex flex-col">
+            <Card key={invoice.id} className="flex min-w-0 flex-col">
               <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-                <div>
-                  <CardTitle className="text-base">
+                <div className="min-w-0">
+                  <CardTitle className="text-base break-words">
                     {invoice.room?.name ?? "—"}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
@@ -115,7 +115,7 @@ export function InvoiceGrid({ invoices }: { invoices: Invoice[] }) {
                     </dd>
                   </div>
                 </dl>
-                <div className="mt-auto flex items-center gap-1">
+                <div className="mt-auto flex min-w-0 flex-wrap items-center gap-1">
                   {invoice.status === "UNPAID" ? (
                     <Button
                       size="sm"

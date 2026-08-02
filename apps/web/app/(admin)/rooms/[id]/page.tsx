@@ -75,8 +75,8 @@ export default async function RoomDetailPage({
       />
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
+          <CardTitle className="flex min-w-0 flex-wrap items-center gap-2">
             Thông tin phòng
             <Badge variant={status.variant}>{status.label}</Badge>
           </CardTitle>

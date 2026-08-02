@@ -79,7 +79,7 @@ export function DashboardCharts({ stats }: { stats: DashboardStats }) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
           <CardTitle>Cơ cấu phòng</CardTitle>
           <CardDescription>
@@ -116,7 +116,7 @@ export function DashboardCharts({ stats }: { stats: DashboardStats }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
           <CardTitle>Trạng thái thanh toán hoá đơn</CardTitle>
           <CardDescription>

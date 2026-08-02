@@ -118,12 +118,12 @@ export function InvoicesToolbar({
   }
 
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
       <div className="grid gap-1.5">
         <Label>Kỳ hoá đơn</Label>
         <MonthPicker month={month} year={year} onChange={navigate} />
       </div>
-      <div className="flex items-end gap-2">
+      <div className="flex min-w-0 flex-wrap items-end gap-2">
         <Button
           variant="outline"
           onClick={() => openReadings()}

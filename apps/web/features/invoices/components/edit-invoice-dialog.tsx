@@ -91,7 +91,9 @@ function EditInvoiceForm({
           lại.
         </DialogDescription>
       </DialogHeader>
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* Only the field grid scrolls, so the title and the save button stay
+          reachable on short viewports. */}
+      <div className="grid min-w-0 flex-1 gap-3 overflow-y-auto sm:grid-cols-2">
         {FIELDS.map((f) => (
           <div key={f.key} className="grid gap-1.5">
             <Label htmlFor={`edit-${f.key}`}>{f.label}</Label>
@@ -135,7 +137,7 @@ export function EditInvoiceDialog({
 }) {
   return (
     <Dialog open={invoice !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
         {invoice ? (
           <EditInvoiceForm
             key={invoice.id}

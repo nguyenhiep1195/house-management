@@ -17,9 +17,14 @@ export default async function AdminLayout({
   return (
     <SidebarProvider>
       <AppSidebar role={user.role} />
-      <SidebarInset>
+      {/* min-w-0: SidebarInset is a flex child, so its default min-width:auto
+          lets a wide table grow the whole column instead of scrolling inside
+          its own overflow-x-auto box. */}
+      <SidebarInset className="min-w-0">
         <SiteHeader user={{ name: user.name, username: user.username }} />
-        <main className="flex flex-1 flex-col gap-6 p-4 sm:p-6">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">
+          {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
