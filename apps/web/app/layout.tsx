@@ -58,7 +58,11 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
-          <Toaster richColors position="top-center" />
+          {/* expand: keep toasts laid out side by side instead of sonner's
+              default collapsed stack; visibleToasts raises the 3-toast cap so
+              a multi-part result (created / skipped / missing readings) shows
+              in full. */}
+          <Toaster richColors position="top-center" expand visibleToasts={6} />
         </ThemeProvider>
       </body>
     </html>

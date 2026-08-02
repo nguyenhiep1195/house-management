@@ -31,8 +31,8 @@ export class InvoicesService {
     private readonly settingsService: SettingsService,
   ) {}
 
-  findAll(filter: { year?: number; month?: number; roomId?: number }) {
-    return this.prisma.invoice.findMany({
+  async findAll(filter: { year?: number; month?: number; roomId?: number }) {
+    const invoices = await this.prisma.invoice.findMany({
       where: {
         ...(filter.year ? { year: filter.year } : {}),
         ...(filter.month ? { month: filter.month } : {}),
@@ -41,6 +41,34 @@ export class InvoicesService {
       orderBy: [{ year: 'desc' }, { month: 'desc' }, { roomId: 'asc' }],
       include: INVOICE_INCLUDE,
     });
+    return this.withMeterReadingFlag(invoices);
+  }
+
+  // An invoice can be issued before its meter reading is entered (electricity
+  // and water then bill at zero consumption). Rather than storing that state,
+  // derive it on read so it clears itself once the reading arrives — entering a
+  // reading runs syncMeterReading, which rewrites the amounts.
+  async withMeterReadingFlag<
+    T extends { roomId: number; year: number; month: number },
+  >(invoices: T[]): Promise<(T & { meterReadingMissing: boolean })[]> {
+    if (invoices.length === 0) return [];
+    const readings = await this.prisma.meterReading.findMany({
+      where: {
+        OR: invoices.map(({ roomId, year, month }) => ({
+          roomId,
+          year,
+          month,
+        })),
+      },
+      select: { roomId: true, year: true, month: true },
+    });
+    const key = (r: { roomId: number; year: number; month: number }) =>
+      `${r.roomId}:${r.year}:${r.month}`;
+    const recorded = new Set(readings.map(key));
+    return invoices.map((invoice) => ({
+      ...invoice,
+      meterReadingMissing: !recorded.has(key(invoice)),
+    }));
   }
 
   async create(dto: CreateInvoiceDto) {
@@ -93,6 +121,10 @@ export class InvoicesService {
   // Single source of truth for invoice amounts: resolves the room's current
   // fee type, meter reading, and prev-reading baseline (previous invoice →
   // contract → room initials) for the given billing period.
+  //
+  // A missing meter reading is not an error: the invoice still bills rent and
+  // the fixed fees, with current = prev so electricity and water come to zero.
+  // Callers surface that state separately (see withMeterReadingFlag).
   private async computeInvoiceData(
     room: Room,
     month: number,
@@ -104,11 +136,6 @@ export class InvoicesService {
         roomId_year_month: { roomId: room.id, year, month },
       },
     });
-    if (!reading) {
-      throw new BadRequestException(
-        `Phòng ${room.name} chưa nhập chỉ số điện nước tháng ${month}/${year}`,
-      );
-    }
 
     // Resolve fee type: explicit override → room's assigned type → default.
     const setting = await this.settingsService.resolve(
@@ -158,8 +185,8 @@ export class InvoicesService {
       previous?.waterCurrent ??
       contract?.initialWaterReading ??
       room.initialWaterReading;
-    const electricityCurrent = reading.electricityReading;
-    const waterCurrent = reading.waterReading;
+    const electricityCurrent = reading?.electricityReading ?? electricityPrev;
+    const waterCurrent = reading?.waterReading ?? waterPrev;
 
     const electricityAmount =
       (electricityCurrent - electricityPrev) * setting.electricityUnitPrice;
@@ -200,6 +227,22 @@ export class InvoicesService {
     };
   }
 
+  private async roomsMissingReading(
+    rooms: { id: number; name: string }[],
+    month: number,
+    year: number,
+  ): Promise<{ roomId: number; roomName: string }[]> {
+    if (rooms.length === 0) return [];
+    const readings = await this.prisma.meterReading.findMany({
+      where: { year, month, roomId: { in: rooms.map((room) => room.id) } },
+      select: { roomId: true },
+    });
+    const recorded = new Set(readings.map((r) => r.roomId));
+    return rooms
+      .filter((room) => !recorded.has(room.id))
+      .map((room) => ({ roomId: room.id, roomName: room.name }));
+  }
+
   async generateForMonth(
     month: number,
     year: number,
@@ -212,9 +255,13 @@ export class InvoicesService {
     const rooms = await this.prisma.room.findMany({
       where: { status: 'OCCUPIED' },
     });
+    // Rooms still without a reading for the period. They are billed all the
+    // same (zero consumption), so this is a follow-up list for the caller, not
+    // a list of failures.
+    const missingReadings = await this.roomsMissingReading(rooms, month, year);
+
     let created = 0;
     const skippedRooms: { roomId: number; roomName: string }[] = [];
-    const missingReadings: { roomId: number; roomName: string }[] = [];
     for (const room of rooms) {
       try {
         await this.create({ roomId: room.id, month, year });
@@ -222,10 +269,6 @@ export class InvoicesService {
       } catch (e) {
         if (e instanceof ConflictException) {
           skippedRooms.push({ roomId: room.id, roomName: room.name });
-          continue;
-        }
-        if (e instanceof BadRequestException) {
-          missingReadings.push({ roomId: room.id, roomName: room.name });
           continue;
         }
         throw e;
@@ -255,24 +298,16 @@ export class InvoicesService {
       where: { year, month, status: 'UNPAID' },
       include: { room: true },
     });
+    const missingReadings = await this.roomsMissingReading(
+      invoices.map((invoice) => invoice.room),
+      month,
+      year,
+    );
     let updated = 0;
     let unchanged = 0;
-    const missingReadings: { roomId: number; roomName: string }[] = [];
 
     for (const invoice of invoices) {
-      let data: Awaited<ReturnType<InvoicesService['computeInvoiceData']>>;
-      try {
-        data = await this.computeInvoiceData(invoice.room, month, year);
-      } catch (e) {
-        if (e instanceof BadRequestException) {
-          missingReadings.push({
-            roomId: invoice.roomId,
-            roomName: invoice.room.name,
-          });
-          continue;
-        }
-        throw e;
-      }
+      const data = await this.computeInvoiceData(invoice.room, month, year);
 
       const changed = (Object.keys(data) as (keyof typeof data)[]).some(
         (key) => invoice[key] !== data[key],

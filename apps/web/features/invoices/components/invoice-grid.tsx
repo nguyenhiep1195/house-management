@@ -8,6 +8,7 @@ import { unpayInvoice } from "@/features/invoices/actions";
 import { type Invoice } from "@/features/invoices/types";
 import { computeFeeLines } from "@/features/invoices/lib/fee-lines";
 import { formatCurrency, formatMonth } from "@/lib/format";
+import { MeterReadingWarning } from "./meter-reading-warning";
 import { InvoiceDetailDialog } from "./invoice-detail-dialog";
 import { EditInvoiceDialog } from "./edit-invoice-dialog";
 import { PayInvoiceDialog } from "./pay-invoice-dialog";
@@ -99,8 +100,14 @@ export function InvoiceGrid({ invoices }: { invoices: Invoice[] }) {
                   </div>
                   <div className="mt-1 flex justify-between border-t pt-1 font-semibold">
                     <dt>Tổng cộng</dt>
-                    <dd className="tabular-nums">
+                    <dd className="inline-flex items-center gap-1.5 tabular-nums">
                       {formatCurrency(invoice.totalAmount)}
+                      {invoice.meterReadingMissing ? (
+                        <MeterReadingWarning
+                          month={invoice.month}
+                          year={invoice.year}
+                        />
+                      ) : null}
                     </dd>
                   </div>
                 </dl>

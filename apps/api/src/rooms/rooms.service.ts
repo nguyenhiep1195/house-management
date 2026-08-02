@@ -50,7 +50,12 @@ export class RoomsService {
       },
     });
     if (!room) throw new NotFoundException(ROOM_NOT_FOUND);
-    return room;
+    // Same "chưa cập nhật chỉ số" flag the invoices list shows, so the room
+    // page renders the warning too.
+    return {
+      ...room,
+      invoices: await this.invoicesService.withMeterReadingFlag(room.invoices),
+    };
   }
 
   async create(dto: CreateRoomDto) {

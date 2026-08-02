@@ -18,6 +18,7 @@ import {
 } from "@/features/invoices/types";
 import { computeFeeLines } from "@/features/invoices/lib/fee-lines";
 import { formatCurrency, formatDate, formatMonth } from "@/lib/format";
+import { MeterReadingWarning } from "./meter-reading-warning";
 import { InvoiceDetailDialog } from "./invoice-detail-dialog";
 import { EditInvoiceDialog } from "./edit-invoice-dialog";
 import { PayInvoiceDialog } from "./pay-invoice-dialog";
@@ -142,7 +143,15 @@ export function InvoiceList({
                       {formatCurrency(extraFees)}
                     </TableCell>
                     <TableCell className="font-medium tabular-nums">
-                      {formatCurrency(invoice.totalAmount)}
+                      <span className="inline-flex items-center gap-1.5">
+                        {formatCurrency(invoice.totalAmount)}
+                        {invoice.meterReadingMissing ? (
+                          <MeterReadingWarning
+                            month={invoice.month}
+                            year={invoice.year}
+                          />
+                        ) : null}
+                      </span>
                     </TableCell>
                     <TableCell>
                       {invoice.status === "PAID" ? (

@@ -6,8 +6,10 @@ import { Gauge, Loader2, RefreshCw, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 import { generateInvoices, refreshInvoices } from "@/features/invoices/actions";
+import type { Invoice } from "@/features/invoices/types";
 import { BulkReadingsDialog } from "@/features/rooms/components/bulk-readings-dialog";
 import type { Room } from "@/features/rooms/types";
+import { GenerateInvoicesDialog } from "./generate-invoices-dialog";
 import { MonthPicker } from "./month-picker";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,24 +23,36 @@ export function InvoicesToolbar({
   month,
   year,
   rooms,
+  invoices,
 }: {
   month: number;
   year: number;
   rooms: Room[];
+  invoices: Invoice[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [refreshing, startRefresh] = React.useTransition();
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [readingsOpen, setReadingsOpen] = React.useState(false);
   const [readingsKey, setReadingsKey] = React.useState(0);
+  // Narrows the readings dialog to the rooms a generate run reported as
+  // missing; null means "every occupied room" (the standalone button).
+  const [readingsRoomIds, setReadingsRoomIds] = React.useState<number[] | null>(
+    null,
+  );
 
   const occupiedRooms = rooms.filter((r) => r.status === "OCCUPIED");
+  const readingsRooms = readingsRoomIds
+    ? occupiedRooms.filter((r) => readingsRoomIds.includes(r.id))
+    : occupiedRooms;
 
   function navigate(nextMonth: number, nextYear: number) {
     router.push(`/invoices?month=${nextMonth}&year=${nextYear}`);
   }
 
-  function openReadings() {
+  function openReadings(roomIds: number[] | null = null) {
+    setReadingsRoomIds(roomIds);
     setReadingsKey((k) => k + 1);
     setReadingsOpen(true);
   }
@@ -50,6 +64,7 @@ export function InvoicesToolbar({
         toast.error(result.error);
         return;
       }
+      setConfirmOpen(false);
       const missing = result.missingReadings ?? [];
       const skipped = result.skippedRooms ?? [];
       toast.success(
@@ -64,11 +79,11 @@ export function InvoicesToolbar({
       }
       if (missing.length > 0) {
         toast.warning(
-          `Chưa nhập chỉ số cho ${missing.length} phòng: ${missing
+          `${missing.length} phòng chưa có chỉ số tháng ${month}/${year}: ${missing
             .map((m) => m.roomName)
-            .join(", ")}. Vui lòng cập nhật chỉ số điện nước.`,
+            .join(", ")}. Hoá đơn đã tạo với tiền điện nước bằng 0 — vui lòng nhập chỉ số.`,
         );
-        openReadings();
+        openReadings(missing.map((m) => m.roomId));
       }
       router.refresh();
     });
@@ -107,13 +122,13 @@ export function InvoicesToolbar({
       <div className="flex items-end gap-2">
         <Button
           variant="outline"
-          onClick={openReadings}
+          onClick={() => openReadings()}
           disabled={occupiedRooms.length === 0}
         >
           <Gauge className="size-4" />
           Cập nhật chỉ số điện nước
         </Button>
-        <Button onClick={handleGenerate} disabled={pending}>
+        <Button onClick={() => setConfirmOpen(true)} disabled={pending}>
           {pending ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
@@ -140,11 +155,21 @@ export function InvoicesToolbar({
           <TooltipContent>Cập nhật lại các thông tin mới nhất</TooltipContent>
         </Tooltip>
       </div>
+      <GenerateInvoicesDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={handleGenerate}
+        pending={pending}
+        month={month}
+        year={year}
+        invoices={invoices}
+        occupiedRooms={occupiedRooms}
+      />
       <BulkReadingsDialog
         key={readingsKey}
         open={readingsOpen}
         onOpenChange={setReadingsOpen}
-        rooms={occupiedRooms}
+        rooms={readingsRooms}
         year={year}
         month={month}
       />

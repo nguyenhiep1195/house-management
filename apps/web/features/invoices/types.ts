@@ -31,4 +31,7 @@ export interface Invoice {
   paymentMethod: PaymentMethod | null;
   paidAt: string | null;
   createdAt: string;
+  // Derived by the API: no meter reading recorded for this billing period, so
+  // electricity and water were billed at zero consumption.
+  meterReadingMissing?: boolean;
 }

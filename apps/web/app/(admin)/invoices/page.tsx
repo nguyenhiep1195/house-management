@@ -45,7 +45,12 @@ export default async function InvoicesPage({
         title="Hoá đơn"
         description="Hoá đơn hàng tháng của các phòng — tự động sinh vào ngày cuối tháng"
       />
-      <InvoicesToolbar month={month} year={year} rooms={rooms} />
+      <InvoicesToolbar
+        month={month}
+        year={year}
+        rooms={rooms}
+        invoices={invoices}
+      />
       <div className="flex justify-end">
         <InvoiceViewToggle view={view} month={month} year={year} />
       </div>

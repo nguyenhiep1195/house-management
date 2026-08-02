@@ -23,7 +23,7 @@ describe('InvoicesService', () => {
     },
     room: { findUnique: jest.fn(), findMany: jest.fn() },
     contract: { findFirst: jest.fn() },
-    meterReading: { findUnique: jest.fn() },
+    meterReading: { findUnique: jest.fn(), findMany: jest.fn() },
   };
   const settings = { resolve: jest.fn() };
 
@@ -58,6 +58,7 @@ describe('InvoicesService', () => {
     jest.clearAllMocks();
     settings.resolve.mockResolvedValue(setting);
     prisma.contract.findFirst.mockResolvedValue(null);
+    prisma.meterReading.findMany.mockResolvedValue([]);
     const moduleRef = await Test.createTestingModule({
       providers: [
         InvoicesService,
@@ -209,13 +210,25 @@ describe('InvoicesService', () => {
     expect(data.waterPrev).toBe(55);
   });
 
-  it('throws when the room has no meter reading for the month', async () => {
+  it('bills zero consumption when the room has no meter reading yet', async () => {
     prisma.room.findUnique.mockResolvedValue(room);
     prisma.invoice.findUnique.mockResolvedValue(null);
+    prisma.invoice.findFirst.mockResolvedValue(null);
     prisma.meterReading.findUnique.mockResolvedValue(null);
-    await expect(
-      service.create({ roomId: 1, month: 7, year: 2026 }),
-    ).rejects.toThrow(BadRequestException);
+    prisma.invoice.create.mockImplementation(
+      ({ data }: { data: Record<string, number> }) =>
+        Promise.resolve({ id: 1, ...data }),
+    );
+
+    await service.create({ roomId: 1, month: 7, year: 2026 });
+    const { data } = prisma.invoice.create.mock.calls[0][0];
+
+    expect(data.electricityCurrent).toBe(data.electricityPrev);
+    expect(data.waterCurrent).toBe(data.waterPrev);
+    // rent + fixed fees only: no electricity or water
+    expect(data.totalAmount).toBe(
+      3000000 + 100000 + 60000 + 40000 + 100000 + 50000,
+    );
   });
 
   it('sources electricity/water current from the meter reading', async () => {
@@ -238,6 +251,7 @@ describe('InvoicesService', () => {
 
   it('generateForMonth creates invoices only for OCCUPIED rooms without one', async () => {
     prisma.room.findMany.mockResolvedValue([room]);
+    prisma.meterReading.findMany.mockResolvedValue([{ roomId: 1 }]);
     prisma.room.findUnique.mockResolvedValue(room);
     prisma.invoice.findUnique
       .mockResolvedValueOnce({ id: 5 }) // already has invoice -> skipped
@@ -263,6 +277,7 @@ describe('InvoicesService', () => {
 
   it('generateForMonth increments created for an OCCUPIED room with no existing invoice', async () => {
     prisma.room.findMany.mockResolvedValue([room]);
+    prisma.meterReading.findMany.mockResolvedValue([{ roomId: 1 }]);
     prisma.room.findUnique.mockResolvedValue(room);
     prisma.invoice.findUnique.mockResolvedValue(null); // no existing invoice
     prisma.invoice.findFirst.mockResolvedValue(null);
@@ -287,6 +302,7 @@ describe('InvoicesService', () => {
 
   it('generateForMonth counts a concurrent P2002 from create as skipped, not fatal', async () => {
     prisma.room.findMany.mockResolvedValue([room]);
+    prisma.meterReading.findMany.mockResolvedValue([{ roomId: 1 }]);
     prisma.room.findUnique.mockResolvedValue(room);
     prisma.invoice.findUnique.mockResolvedValue(null); // passes pre-check
     prisma.invoice.findFirst.mockResolvedValue(null);
@@ -308,20 +324,35 @@ describe('InvoicesService', () => {
     });
   });
 
-  it('generateForMonth collects rooms with missing readings', async () => {
+  it('generateForMonth still bills rooms with missing readings, and reports them', async () => {
     prisma.room.findMany.mockResolvedValue([room]);
     prisma.room.findUnique.mockResolvedValue(room);
     prisma.invoice.findUnique.mockResolvedValue(null);
     prisma.invoice.findFirst.mockResolvedValue(null);
-    prisma.meterReading.findUnique.mockResolvedValue(null); // no reading -> missing
+    prisma.meterReading.findMany.mockResolvedValue([]); // no reading for the period
+    prisma.meterReading.findUnique.mockResolvedValue(null);
+    prisma.invoice.create.mockResolvedValue({ id: 11 });
 
     const result = await service.generateForMonth(7, 2026);
     expect(result).toEqual({
-      created: 0,
+      created: 1,
       skipped: 0,
       skippedRooms: [],
       missingReadings: [{ roomId: 1, roomName: 'P101' }],
     });
+  });
+
+  it('findAll flags invoices whose period has no meter reading', async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      { id: 1, roomId: 1, year: 2026, month: 7 },
+      { id: 2, roomId: 2, year: 2026, month: 7 },
+    ]);
+    prisma.meterReading.findMany.mockResolvedValue([
+      { roomId: 1, year: 2026, month: 7 },
+    ]);
+
+    const result = await service.findAll({ year: 2026, month: 7 });
+    expect(result.map((i) => i.meterReadingMissing)).toEqual([false, true]);
   });
 
   it('marks an invoice as paid with a payment method', async () => {
@@ -448,6 +479,7 @@ describe('InvoicesService', () => {
       prisma.invoice.findMany.mockResolvedValue([
         { ...freshInvoice, electricityUnitPrice: 3000, totalAmount: 3980000 },
       ]);
+      prisma.meterReading.findMany.mockResolvedValue([{ roomId: 1 }]);
       prisma.invoice.findFirst.mockResolvedValue(null);
       prisma.meterReading.findUnique.mockResolvedValue({
         electricityReading: 250,
@@ -468,6 +500,7 @@ describe('InvoicesService', () => {
 
     it('leaves an already up-to-date invoice untouched', async () => {
       prisma.invoice.findMany.mockResolvedValue([freshInvoice]);
+      prisma.meterReading.findMany.mockResolvedValue([{ roomId: 1 }]);
       prisma.invoice.findFirst.mockResolvedValue(null);
       prisma.meterReading.findUnique.mockResolvedValue({
         electricityReading: 250,
@@ -483,17 +516,25 @@ describe('InvoicesService', () => {
       expect(prisma.invoice.update).not.toHaveBeenCalled();
     });
 
-    it('collects rooms whose meter reading is missing', async () => {
+    it('rebuilds at zero consumption and reports the missing reading', async () => {
       prisma.invoice.findMany.mockResolvedValue([freshInvoice]);
+      prisma.meterReading.findMany.mockResolvedValue([]);
       prisma.meterReading.findUnique.mockResolvedValue(null);
+      prisma.invoice.findFirst.mockResolvedValue(null);
+      prisma.invoice.update.mockResolvedValue({});
 
       const result = await service.refreshForMonth(7, 2026);
       expect(result).toEqual({
-        updated: 0,
+        updated: 1,
         unchanged: 0,
         missingReadings: [{ roomId: 1, roomName: 'P101' }],
       });
-      expect(prisma.invoice.update).not.toHaveBeenCalled();
+      const { data } = prisma.invoice.update.mock.calls[0][0];
+      expect(data.electricityCurrent).toBe(100); // = prev
+      expect(data.waterCurrent).toBe(10); // = prev
+      expect(data.totalAmount).toBe(
+        3000000 + 100000 + 60000 + 40000 + 100000 + 50000,
+      );
     });
   });
 
