@@ -45,10 +45,10 @@ export function RoomReadingEditor({
     const nextElectricity =
       electricity === "" ? electricityReading : Number(electricity);
     const nextWater = water === "" ? waterReading : Number(water);
-    if (nextElectricity < electricityReading || nextWater < waterReading) {
-      toast.error("Chỉ số mới phải lớn hơn hoặc bằng chỉ số hiện tại");
-      return;
-    }
+    // No client-side bound check: this dialog can target any period, and the
+    // room's mirror columns are only the NEWEST reading — comparing against
+    // them would wrongly reject a valid back-dated edit. The API enforces the
+    // real per-period bounds.
     startTransition(async () => {
       const result = await bulkUpdateReadings(
         [
@@ -114,13 +114,13 @@ export function RoomReadingEditor({
           <div className="grid gap-1.5">
             <Label htmlFor="reading-electricity">Chỉ số điện (kWh)</Label>
             <p className="text-xs text-muted-foreground tabular-nums">
-              Chỉ số cũ: {electricityReading}
+              Chỉ số hiện tại: {electricityReading}
             </p>
             <Input
               id="reading-electricity"
               type="number"
               inputMode="numeric"
-              min={electricityReading}
+              min={0}
               placeholder="Chỉ số mới"
               value={electricity}
               onChange={(e) => setElectricity(e.target.value)}
@@ -129,13 +129,13 @@ export function RoomReadingEditor({
           <div className="grid gap-1.5">
             <Label htmlFor="reading-water">Chỉ số nước (m³)</Label>
             <p className="text-xs text-muted-foreground tabular-nums">
-              Chỉ số cũ: {waterReading}
+              Chỉ số hiện tại: {waterReading}
             </p>
             <Input
               id="reading-water"
               type="number"
               inputMode="numeric"
-              min={waterReading}
+              min={0}
               placeholder="Chỉ số mới"
               value={water}
               onChange={(e) => setWater(e.target.value)}

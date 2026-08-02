@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { generateInvoices, refreshInvoices } from "@/features/invoices/actions";
 import type { Invoice } from "@/features/invoices/types";
 import { BulkReadingsDialog } from "@/features/rooms/components/bulk-readings-dialog";
-import type { Room } from "@/features/rooms/types";
+import type { Room, RoomPeriodReading } from "@/features/rooms/types";
 import { GenerateInvoicesDialog } from "./generate-invoices-dialog";
 import { MonthPicker } from "./month-picker";
 import { Button } from "@/components/ui/button";
@@ -23,11 +23,13 @@ export function InvoicesToolbar({
   month,
   year,
   rooms,
+  readings,
   invoices,
 }: {
   month: number;
   year: number;
   rooms: Room[];
+  readings: RoomPeriodReading[];
   invoices: Invoice[];
 }) {
   const router = useRouter();
@@ -43,9 +45,11 @@ export function InvoicesToolbar({
   );
 
   const occupiedRooms = rooms.filter((r) => r.status === "OCCUPIED");
-  const readingsRooms = readingsRoomIds
-    ? occupiedRooms.filter((r) => readingsRoomIds.includes(r.id))
-    : occupiedRooms;
+  // The readings endpoint already returns occupied rooms only; narrow further
+  // when a generate run named specific rooms.
+  const dialogReadings = readingsRoomIds
+    ? readings.filter((r) => readingsRoomIds.includes(r.roomId))
+    : readings;
 
   function navigate(nextMonth: number, nextYear: number) {
     router.push(`/invoices?month=${nextMonth}&year=${nextYear}`);
@@ -123,7 +127,7 @@ export function InvoicesToolbar({
         <Button
           variant="outline"
           onClick={() => openReadings()}
-          disabled={occupiedRooms.length === 0}
+          disabled={readings.length === 0}
         >
           <Gauge className="size-4" />
           Cập nhật chỉ số điện nước
@@ -169,7 +173,7 @@ export function InvoicesToolbar({
         key={readingsKey}
         open={readingsOpen}
         onOpenChange={setReadingsOpen}
-        rooms={readingsRooms}
+        readings={dialogReadings}
         year={year}
         month={month}
       />

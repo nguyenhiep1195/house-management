@@ -4,7 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { DoorOpen, Eye, Gauge, Pencil, Plus, Trash2 } from "lucide-react";
 
-import { ROOM_STATUS_LABEL, type Room } from "@/features/rooms/types";
+import {
+  ROOM_STATUS_LABEL,
+  type Room,
+  type RoomPeriodReading,
+} from "@/features/rooms/types";
 import type { FeeSetting } from "@/features/settings/types";
 import { formatCurrency } from "@/lib/format";
 import { BulkReadingsDialog } from "./bulk-readings-dialog";
@@ -24,9 +28,15 @@ import {
 export function RoomsTable({
   rooms,
   feeSettings,
+  readings,
+  year,
+  month,
 }: {
   rooms: Room[];
   feeSettings: FeeSetting[];
+  readings: RoomPeriodReading[];
+  year: number;
+  month: number;
 }) {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [bulkOpen, setBulkOpen] = React.useState(false);
@@ -44,7 +54,7 @@ export function RoomsTable({
         <Button
           variant="outline"
           onClick={() => { setBulkKey((k) => k + 1); setBulkOpen(true); }}
-          disabled={rooms.length === 0}
+          disabled={readings.length === 0}
         >
           <Gauge className="size-4" />
           Cập nhật chỉ số điện nước
@@ -198,9 +208,9 @@ export function RoomsTable({
         key={bulkKey}
         open={bulkOpen}
         onOpenChange={setBulkOpen}
-        rooms={rooms}
-        year={new Date().getFullYear()}
-        month={new Date().getMonth() + 1}
+        readings={readings}
+        year={year}
+        month={month}
       />
     </>
   );

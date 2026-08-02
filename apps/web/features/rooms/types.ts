@@ -29,6 +29,19 @@ export interface Room {
   _count?: { tenants: number };
 }
 
+// Mirrors the API's RoomPeriodReading (GET /rooms/meter-readings).
+export interface RoomPeriodReading {
+  roomId: number;
+  roomName: string;
+  prevElectricity: number;
+  prevWater: number;
+  electricityReading: number | null;
+  waterReading: number | null;
+  recorded: boolean;
+  editable: boolean;
+  lockReason: string | null;
+}
+
 export interface MeterReadingItem {
   roomId: number;
   electricityReading: number;
