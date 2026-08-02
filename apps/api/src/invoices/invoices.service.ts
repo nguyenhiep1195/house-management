@@ -401,43 +401,85 @@ export class InvoicesService {
     return { message: 'Đã xoá hoá đơn' };
   }
 
-  async syncMeterReading(
+  // Recomputes this room's invoice chain from the given period forward.
+  //
+  // An invoice's electricityPrev is a stored snapshot of the previous invoice's
+  // electricityCurrent, not a live lookup — so editing a back-dated reading has
+  // to rewalk every later invoice, or the difference gets billed twice.
+  //
+  // Only reading-derived fields are touched. Room price, fee settings and
+  // occupant counts stay as stored, so manual invoice edits survive. That is
+  // the deliberate opposite of refreshForMonth, which rebuilds everything.
+  async resyncFromPeriod(
     roomId: number,
     year: number,
     month: number,
   ): Promise<void> {
-    const invoice = await this.prisma.invoice.findUnique({
-      where: { roomId_year_month: { roomId, year, month } },
+    const fromPeriod = {
+      OR: [{ year: { gt: year } }, { year, month: { gte: month } }],
+    };
+    const invoices = await this.prisma.invoice.findMany({
+      where: { roomId, ...fromPeriod },
+      orderBy: [{ year: 'asc' }, { month: 'asc' }],
     });
-    if (!invoice) return;
-    if (invoice.status === 'PAID') {
+
+    // No invoice for the edited period itself means nothing downstream can
+    // shift: the prev chain runs through invoices, not readings.
+    const first = invoices[0];
+    if (!first || first.year !== year || first.month !== month) return;
+
+    // Defensive: callers check this before writing anything, so reaching here
+    // with a settled invoice would mean a new call site skipped the guard.
+    if (invoices.some((invoice) => invoice.status === 'PAID')) {
       throw new ConflictException(INVOICE_PAID_LOCKED);
     }
-    const reading = await this.prisma.meterReading.findUnique({
-      where: { roomId_year_month: { roomId, year, month } },
-    });
-    if (!reading) return;
 
-    const electricityCurrent = reading.electricityReading;
-    const waterCurrent = reading.waterReading;
-    const electricityAmount =
-      (electricityCurrent - invoice.electricityPrev) *
-      invoice.electricityUnitPrice;
-    const waterAmount =
-      (waterCurrent - invoice.waterPrev) * invoice.waterUnitPrice;
-    const totalAmount =
-      invoice.roomPrice +
-      electricityAmount +
-      waterAmount +
-      invoice.internetFee +
-      invoice.elevatorFee +
-      invoice.cleaningFee +
-      invoice.motorbikeFee +
-      invoice.otherFee;
-
-    await this.prisma.invoice.update({
-      where: { id: invoice.id },
-      data: { electricityCurrent, waterCurrent, totalAmount },
+    const readings = await this.prisma.meterReading.findMany({
+      where: { roomId, ...fromPeriod },
     });
+    const periodKey = (p: { year: number; month: number }) =>
+      `${p.year}-${p.month}`;
+    const readingByPeriod = new Map(readings.map((r) => [periodKey(r), r]));
+
+    // The baseline entering the edited period is unaffected by the edit.
+    let electricityPrev = first.electricityPrev;
+    let waterPrev = first.waterPrev;
+
+    for (const invoice of invoices) {
+      const reading = readingByPeriod.get(periodKey(invoice));
+      const electricityCurrent = reading?.electricityReading ?? electricityPrev;
+      const waterCurrent = reading?.waterReading ?? waterPrev;
+      const totalAmount =
+        invoice.roomPrice +
+        (electricityCurrent - electricityPrev) * invoice.electricityUnitPrice +
+        (waterCurrent - waterPrev) * invoice.waterUnitPrice +
+        invoice.internetFee +
+        invoice.elevatorFee +
+        invoice.cleaningFee +
+        invoice.motorbikeFee +
+        invoice.otherFee;
+
+      const changed =
+        invoice.electricityPrev !== electricityPrev ||
+        invoice.electricityCurrent !== electricityCurrent ||
+        invoice.waterPrev !== waterPrev ||
+        invoice.waterCurrent !== waterCurrent ||
+        invoice.totalAmount !== totalAmount;
+      if (changed) {
+        await this.prisma.invoice.update({
+          where: { id: invoice.id },
+          data: {
+            electricityPrev,
+            electricityCurrent,
+            waterPrev,
+            waterCurrent,
+            totalAmount,
+          },
+        });
+      }
+
+      electricityPrev = electricityCurrent;
+      waterPrev = waterCurrent;
+    }
   }
 }

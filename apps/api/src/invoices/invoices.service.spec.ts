@@ -387,55 +387,118 @@ describe('InvoicesService', () => {
     await expect(service.unpay(9)).rejects.toThrow(NotFoundException);
   });
 
-  it('syncMeterReading is a no-op when no invoice exists', async () => {
-    prisma.invoice.findUnique.mockResolvedValue(null);
-    prisma.meterReading.findUnique.mockResolvedValue({
-      electricityReading: 400,
-      waterReading: 40,
-    });
-    await service.syncMeterReading(1, 2026, 7);
+  it('resyncFromPeriod is a no-op when the edited period has no invoice', async () => {
+    // Only a LATER invoice exists. The prev chain runs through invoices, so a
+    // reading in a period with no invoice cannot shift anything downstream.
+    prisma.invoice.findMany.mockResolvedValue([
+      { id: 6, roomId: 1, year: 2026, month: 8, status: 'UNPAID' },
+    ]);
+    await service.resyncFromPeriod(1, 2026, 7);
     expect(prisma.invoice.update).not.toHaveBeenCalled();
   });
 
-  it('syncMeterReading recomputes an unpaid invoice from snapshot prices', async () => {
-    prisma.invoice.findUnique.mockResolvedValue({
-      id: 5,
-      status: 'UNPAID',
-      roomPrice: 3000000,
-      electricityPrev: 100,
-      electricityUnitPrice: 3500,
-      waterPrev: 10,
-      waterUnitPrice: 15000,
-      internetFee: 100000,
-      elevatorFee: 60000,
-      cleaningFee: 40000,
-      motorbikeFee: 100000,
-      otherFee: 50000,
-    });
-    prisma.meterReading.findUnique.mockResolvedValue({
-      electricityReading: 250,
-      waterReading: 22,
-    });
+  it('resyncFromPeriod recomputes the edited invoice from snapshot prices', async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: 5,
+        roomId: 1,
+        year: 2026,
+        month: 7,
+        status: 'UNPAID',
+        roomPrice: 3000000,
+        electricityPrev: 100,
+        electricityCurrent: 100,
+        electricityUnitPrice: 3500,
+        waterPrev: 10,
+        waterCurrent: 10,
+        waterUnitPrice: 15000,
+        internetFee: 100000,
+        elevatorFee: 60000,
+        cleaningFee: 40000,
+        motorbikeFee: 100000,
+        otherFee: 50000,
+        totalAmount: 3350000,
+      },
+    ]);
+    prisma.meterReading.findMany.mockResolvedValue([
+      { year: 2026, month: 7, electricityReading: 250, waterReading: 22 },
+    ]);
     prisma.invoice.update.mockResolvedValue({});
-    await service.syncMeterReading(1, 2026, 7);
+
+    await service.resyncFromPeriod(1, 2026, 7);
+
     const { data } = prisma.invoice.update.mock.calls[0][0];
     // elec (250-100)*3500=525000 ; water (22-10)*15000=180000
     expect(data.electricityCurrent).toBe(250);
     expect(data.waterCurrent).toBe(22);
+    expect(data.electricityPrev).toBe(100);
     expect(data.totalAmount).toBe(
       3000000 + 525000 + 180000 + 100000 + 60000 + 40000 + 100000 + 50000,
     );
   });
 
-  it('syncMeterReading refuses to touch a PAID invoice', async () => {
-    prisma.invoice.findUnique.mockResolvedValue({ id: 5, status: 'PAID' });
-    prisma.meterReading.findUnique.mockResolvedValue({
-      electricityReading: 250,
-      waterReading: 22,
-    });
-    await expect(service.syncMeterReading(1, 2026, 7)).rejects.toThrow(
+  it('resyncFromPeriod cascades the new current into the next invoice prev', async () => {
+    const base = {
+      roomId: 1,
+      status: 'UNPAID',
+      roomPrice: 1000000,
+      electricityUnitPrice: 1000,
+      waterUnitPrice: 0,
+      internetFee: 0,
+      elevatorFee: 0,
+      cleaningFee: 0,
+      motorbikeFee: 0,
+      otherFee: 0,
+      waterPrev: 0,
+      waterCurrent: 0,
+    };
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        ...base,
+        id: 5,
+        year: 2026,
+        month: 7,
+        electricityPrev: 100,
+        electricityCurrent: 200,
+        totalAmount: 1100000,
+      },
+      {
+        ...base,
+        id: 6,
+        year: 2026,
+        month: 8,
+        electricityPrev: 200, // stale snapshot of month 7's old current
+        electricityCurrent: 260,
+        totalAmount: 1060000,
+      },
+    ]);
+    prisma.meterReading.findMany.mockResolvedValue([
+      { year: 2026, month: 7, electricityReading: 250, waterReading: 0 },
+      { year: 2026, month: 8, electricityReading: 260, waterReading: 0 },
+    ]);
+    prisma.invoice.update.mockResolvedValue({});
+
+    await service.resyncFromPeriod(1, 2026, 7);
+
+    expect(prisma.invoice.update).toHaveBeenCalledTimes(2);
+    const july = prisma.invoice.update.mock.calls[0][0].data;
+    const august = prisma.invoice.update.mock.calls[1][0].data;
+    expect(july.electricityCurrent).toBe(250);
+    expect(july.totalAmount).toBe(1000000 + 150 * 1000);
+    // August must restart from July's NEW current, not the stale 200.
+    expect(august.electricityPrev).toBe(250);
+    expect(august.totalAmount).toBe(1000000 + 10 * 1000);
+  });
+
+  it('resyncFromPeriod refuses when any invoice in the chain is PAID', async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      { id: 5, roomId: 1, year: 2026, month: 7, status: 'UNPAID' },
+      { id: 6, roomId: 1, year: 2026, month: 8, status: 'PAID' },
+    ]);
+    await expect(service.resyncFromPeriod(1, 2026, 7)).rejects.toThrow(
       ConflictException,
     );
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
   });
 
   describe('refreshForMonth', () => {

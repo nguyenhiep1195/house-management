@@ -234,8 +234,8 @@ export class RoomsService {
           waterReading: item.waterReading,
         },
       });
-      // Keep the month's invoice in sync (added in Task 4).
-      await this.invoicesService.syncMeterReading(
+      // Rewalk this room's invoice chain from the edited period forward.
+      await this.invoicesService.resyncFromPeriod(
         item.roomId,
         dto.year,
         dto.month,

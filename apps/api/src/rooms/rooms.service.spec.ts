@@ -33,7 +33,7 @@ describe('RoomsService', () => {
     feeSetting: { findUnique: jest.fn() },
     $transaction: jest.fn(),
   };
-  const invoices = { syncMeterReading: jest.fn() };
+  const invoices = { resyncFromPeriod: jest.fn() };
   const settings = { getDefault: jest.fn() };
 
   const room = {
@@ -126,7 +126,7 @@ describe('RoomsService.bulkUpdateReadings', () => {
         : (ops as any)(prisma),
     ),
   };
-  const invoices = { syncMeterReading: jest.fn() };
+  const invoices = { resyncFromPeriod: jest.fn() };
   const settings = { getDefault: jest.fn() };
 
   const room = {
