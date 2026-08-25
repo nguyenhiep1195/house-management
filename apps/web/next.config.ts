@@ -8,6 +8,7 @@ const withSerwist = withSerwistInit({
 });
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   // Serwist injects a webpack config; dev uses Turbopack (SW disabled in dev).
   // An empty turbopack config silences Next 16's "webpack config, no turbopack
   // config" error without forcing dev onto webpack.

@@ -11,6 +11,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
 import { validateEnv } from './config/env.validation';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { SettingsModule } from './settings/settings.module';
@@ -32,6 +33,7 @@ import { ContractsModule } from './contracts/contracts.module';
     ContractsModule,
     InvoicesModule,
     DashboardModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [

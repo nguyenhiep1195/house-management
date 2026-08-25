@@ -1,68 +1,104 @@
-# Production stack for a single, small EC2 instance.
+# Single-server production stack for Vultr:
+# Caddy (public HTTPS) -> Next.js / NestJS -> MySQL (private network only).
 #
-#   All three containers run on one box:
-#     mysql  — database (data persisted in a named volume, NOT exposed to the internet)
-#     api    — NestJS backend (only reachable through caddy, no host port)
-#     caddy  — reverse proxy that terminates HTTPS (auto Let's Encrypt cert)
-#
-# The Next.js frontend is hosted separately on Vercel and calls this API over
-# https://api.<your-domain>.
-#
-# Run with (from the repo root, on the server):
-#   docker compose --env-file deploy/.env.prod -f docker-compose.prod.yml up -d --build
-#
-# `--env-file deploy/.env.prod` feeds ${VAR} interpolation below AND the values
-# are injected into the api container via env_file.
+# Run from the repository root:
+# docker compose --env-file deploy/.env.prod -f docker-compose.prod.yml up -d --build
 
 services:
   mysql:
-    image: mysql:8
+    image: mysql:8.4
     container_name: hm-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?set MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER:?set MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
-    # No `ports:` on purpose — MySQL must never be reachable from the internet.
-    # Only the api container (same compose network) can connect to it.
     healthcheck:
       test:
         ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
     restart: unless-stopped
 
   api:
     build:
       context: ./apps/api
     container_name: hm-api
-    # App secrets (JWT_SECRET, SMTP creds, SEED_ADMIN_*) come from this file.
     env_file:
-      - ./deploy/.env.prod
+      - ${APP_ENV_FILE:-./deploy/.env.prod}
     environment:
-      # Single source of truth for the DB password: built from the same var
-      # MySQL uses above, so they can never drift apart.
-      DATABASE_URL: "mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/${MYSQL_DATABASE}"
+      DATABASE_URL: "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}"
+      NODE_ENV: production
       PORT: "3001"
-    # No host port — the API is only reached through caddy.
     depends_on:
       mysql:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
+    stop_grace_period: 30s
+
+  web:
+    build:
+      context: ./apps/web
+    container_name: hm-web
+    environment:
+      API_URL: http://api:3001
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    stop_grace_period: 30s
 
   caddy:
     image: caddy:2-alpine
     container_name: hm-caddy
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
+      TLS_EMAIL: ${TLS_EMAIL:?set TLS_EMAIL}
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data # stores the TLS certificates — keep this volume!
+      - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - api
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

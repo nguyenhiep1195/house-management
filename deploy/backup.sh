@@ -1,48 +1,55 @@
 #!/bin/sh
-# Nightly MySQL backup -> Amazon S3.
+# Nightly MySQL backup -> any S3-compatible object storage (including Vultr).
 #
 # Dumps the database from the running mysql container, gzips it, uploads it to
 # S3, and prunes local copies older than 7 days.
 #
 # Prerequisites on the server:
-#   - AWS CLI installed and credentials available (an EC2 IAM role with
-#     s3:PutObject on the bucket is the safest option — no keys on disk).
+#   - AWS CLI installed and configured with an object-storage access key.
 #   - The values below match deploy/.env.prod.
 #
-# Schedule it with cron (run `crontab -e`), e.g. every night at 02:30:
-#   30 2 * * * /home/ubuntu/house-management/deploy/backup.sh >> /var/log/hm-backup.log 2>&1
+# Schedule it with cron, e.g. every night at 02:30:
+#   30 2 * * * /opt/house-management/deploy/backup.sh >> /var/log/hm-backup.log 2>&1
 #
-# Restore later with:
-#   gunzip -c backup.sql.gz | docker exec -i hm-mysql mysql -uroot -p"$PASS" house_management
+# Restore later after loading MYSQL_ROOT_PASSWORD and MYSQL_DATABASE:
+#   gunzip -c backup.sql.gz | docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" hm-mysql mysql -uroot "$MYSQL_DATABASE"
 
 set -e
 
-# --- Config (edit to match your setup) --------------------------------------
-CONTAINER=hm-mysql
-DB_NAME=house_management
-S3_BUCKET=s3://your-backup-bucket/house-management
-LOCAL_DIR=/home/ubuntu/hm-backups
-# Read the DB password from the prod env file so it isn't duplicated here.
-ENV_FILE=/home/ubuntu/house-management/deploy/.env.prod
-# ----------------------------------------------------------------------------
+# Override these from cron/systemd if your paths or bucket differ.
+HM_CONTAINER=${HM_CONTAINER:-hm-mysql}
+HM_S3_BUCKET=${HM_S3_BUCKET:-s3://your-backup-bucket/house-management}
+HM_S3_ENDPOINT=${HM_S3_ENDPOINT:-}
+HM_LOCAL_DIR=${HM_LOCAL_DIR:-/var/backups/house-management}
+HM_ENV_FILE=${HM_ENV_FILE:-/opt/house-management/deploy/.env.prod}
 
-MYSQL_ROOT_PASSWORD=$(grep -E '^MYSQL_ROOT_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)
+MYSQL_ROOT_PASSWORD=$(grep -E '^MYSQL_ROOT_PASSWORD=' "$HM_ENV_FILE" | cut -d= -f2-)
+MYSQL_DATABASE=$(grep -E '^MYSQL_DATABASE=' "$HM_ENV_FILE" | cut -d= -f2-)
+
+if [ -z "$MYSQL_ROOT_PASSWORD" ] || [ -z "$MYSQL_DATABASE" ]; then
+  echo "Missing MYSQL_ROOT_PASSWORD or MYSQL_DATABASE in $HM_ENV_FILE" >&2
+  exit 1
+fi
 
 STAMP=$(date +%Y-%m-%d_%H%M%S)
-FILE="$LOCAL_DIR/${DB_NAME}_${STAMP}.sql.gz"
+FILE="$HM_LOCAL_DIR/${MYSQL_DATABASE}_${STAMP}.sql.gz"
 
-mkdir -p "$LOCAL_DIR"
+mkdir -p "$HM_LOCAL_DIR"
 
-echo "[$(date)] Dumping $DB_NAME ..."
-docker exec "$CONTAINER" mysqldump \
-  -uroot -p"$MYSQL_ROOT_PASSWORD" \
+echo "[$(date)] Dumping $MYSQL_DATABASE ..."
+docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" "$HM_CONTAINER" mysqldump \
+  -uroot \
   --single-transaction --quick --routines --events \
-  "$DB_NAME" | gzip > "$FILE"
+  "$MYSQL_DATABASE" | gzip > "$FILE"
 
-echo "[$(date)] Uploading to $S3_BUCKET ..."
-aws s3 cp "$FILE" "$S3_BUCKET/"
+echo "[$(date)] Uploading to $HM_S3_BUCKET ..."
+if [ -n "$HM_S3_ENDPOINT" ]; then
+  aws --endpoint-url "$HM_S3_ENDPOINT" s3 cp "$FILE" "$HM_S3_BUCKET/"
+else
+  aws s3 cp "$FILE" "$HM_S3_BUCKET/"
+fi
 
 echo "[$(date)] Pruning local backups older than 7 days ..."
-find "$LOCAL_DIR" -name '*.sql.gz' -mtime +7 -delete
+find "$HM_LOCAL_DIR" -name '*.sql.gz' -mtime +7 -delete
 
 echo "[$(date)] Backup done: $FILE"

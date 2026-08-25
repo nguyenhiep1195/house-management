@@ -95,6 +95,8 @@ describe('Rental lifecycle (e2e)', () => {
         roomId,
         price: 3200000,
         deposit: 3000000,
+        initialElectricityReading: 100,
+        initialWaterReading: 10,
         startDate: '2026-07-01',
         endDate: '2027-07-01',
       })
@@ -114,6 +116,8 @@ describe('Rental lifecycle (e2e)', () => {
       .patch('/rooms/meter-readings')
       .set(auth())
       .send({
+        year: 2026,
+        month: 7,
         items: [{ roomId, electricityReading: 50, waterReading: 5 }],
       })
       .expect(400);
@@ -122,6 +126,8 @@ describe('Rental lifecycle (e2e)', () => {
       .patch('/rooms/meter-readings')
       .set(auth())
       .send({
+        year: 2026,
+        month: 7,
         items: [{ roomId, electricityReading: 250, waterReading: 22 }],
       })
       .expect(200);

@@ -1,17 +1,13 @@
-# Caddy reverse proxy — terminates HTTPS for the backend API.
-#
-# Caddy automatically obtains and renews a free Let's Encrypt certificate for
-# the domain below, as long as:
-#   - the domain's DNS A record points at this server's public IP, and
-#   - ports 80 and 443 are open in the EC2 security group.
-#
-# Replace api.example.com with your real API subdomain, and set a real email
-# (Let's Encrypt uses it for expiry notices).
-
 {
-	email you@example.com
+	email {$TLS_EMAIL}
 }
 
-api.example.com {
+{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+{$API_DOMAIN} {
+	encode zstd gzip
 	reverse_proxy api:3001
 }

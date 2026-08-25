@@ -1,5 +1,9 @@
 # Deploy — AWS (cheapest single-instance setup)
 
+> Legacy guide: `docker-compose.prod.yml` now targets the full Docker stack on
+> Vultr. Use `docs/deploy-vultr.md` for the current production procedure; the
+> AWS/Vercel steps below are retained only as historical reference.
+
 Target: a small, low-traffic app. **One EC2 instance** runs the whole backend
 stack (NestJS + MySQL + Caddy) via Docker Compose. The **frontend runs on
 Vercel** (free tier). No load balancer, no RDS, no auto scaling — the cheapest
